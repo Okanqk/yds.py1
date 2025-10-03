@@ -180,26 +180,20 @@ elif menu == "➕ İçerik Ekle":
                 st.error(f"❌ Dosya hatası: {e}")
 # -------------------- İÇERİK EKLEME BURADA BİTİYOR --------------------
 # -------------------- BOŞ SAYFALAR --------------------
-elif menu == "📚 PassageWork Çalışma":
-    st.header("📚 PassageWork Çalışma")
-    st.info("🚧 Bu bölüm yakında eklenecek...")
-    st.write("Gemini'den eklediğin PassageWork içerikleri burada görünecek.")
-
 elif menu == "🎯 YDS Çalışma Soruları":
     st.header("🎯 YDS Çalışma Soruları")
     st.info("🚧 Bu bölüm yakında eklenecek...")
+    st.write("Burada YDS formatında çalışma soruları çözeceksin.")
 
 elif menu == "📝 Deneme Testleri":
     st.header("📝 Deneme Testleri")
     st.info("🚧 Bu bölüm yakında eklenecek...")
+    st.write("Burada tam deneme testleri çözeceksin.")
 
 elif menu == "🏆 Çıkmış Sorular":
     st.header("🏆 Çıkmış Sorular")
     st.info("🚧 Bu bölüm yakında eklenecek...")
-
-elif menu == "🔧 Ayarlar":
-    st.header("🔧 Ayarlar")
-    st.info("🚧 Bu bölüm yakında eklenecek...")
+    st.write("Burada önceki yılların çıkmış sorularını çözeceksin.")
 # -------------------- BOŞ SAYFALAR BURADA BİTİYOR --------------------
 # -------------------- TEST SİSTEMİ FONKSİYONLARI --------------------
 def test_sorusu_goster(soru_data):
