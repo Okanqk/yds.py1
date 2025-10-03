@@ -188,31 +188,33 @@ elif menu == "➕ İçerik Ekle":
         placeholder='{"icerik_tipi": "kelime_tablosu", "baslik": "Örnek", "kelimeler": [...]}'
     )
     
-    if st.button("📤 İçeriği İşle", type="primary"):
+    if st.button("📤 İçeriği İşle ve Kaydet", type="primary"):
         if json_input.strip():
             try:
+                # JSON'u işle
                 success, mesaj = gemini_json_isleyici(json_input)
                 if success:
-                    st.success(mesaj)
-                    st.balloons()
-                    
                     veri = json.loads(json_input)
-                    with st.expander("📋 Alınan JSON'u Gör"):
-                        st.json(veri)
+                    
+                    # HEMEN KAYDET (butona gerek yok)
+                    save_success, save_mesaj = icerik_dosyasina_kaydet(veri)
+                    if save_success:
+                        st.success("✅ İçerik başarıyla kaydedildi!")
+                        st.balloons()
                         
-                    if st.button("💾 Dosyaya Kaydet"):
-                        save_success, save_mesaj = icerik_dosyasina_kaydet(veri)
-                        if save_success:
-                            st.success(save_mesaj)
-                        else:
-                            st.error(save_mesaj)
+                        # Otomatik yenile
+                        st.info("🔄 PassageWork sekmesine gidip içeriği görebilirsin")
+                        
+                        with st.expander("📋 Kaydedilen İçerik"):
+                            st.json(veri)
+                    else:
+                        st.error(save_mesaj)
                 else:
                     st.error(mesaj)
             except Exception as e:
                 st.error(f"❌ Hata: {e}")
         else:
             st.warning("⚠️ Lütfen JSON yapıştırın")
-
 # -------------------- AYARLAR SAYFASI --------------------
 elif menu == "🔧 Ayarlar":
     st.header("🔧 Ayarlar")
@@ -232,6 +234,19 @@ elif menu == "🔧 Ayarlar":
             
         except Exception as e:
             st.error(f"❌ Yedekleme hatası: {e}")
+# AYARLAR SEKMESİNE BUNU EKLE:
+elif menu == "🔧 Ayarlar":
+    st.header("🔧 Ayarlar")
+    
+    # DEBUG: Dosya içeriğini göster
+    st.subheader("🐛 Debug - Dosya İçeriği")
+    try:
+        with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
+            icerikler = json.load(f)
+        st.write(f"**Dosyadaki içerik sayısı:** {len(icerikler)}")
+        st.json(icerikler)  # Tüm içeriği göster
+    except Exception as e:
+        st.error(f"❌ Dosya okunamadı: {e}")
 
 # -------------------- BOŞ SAYFALAR --------------------
 elif menu == "🎯 YDS Çalışma Soruları":
