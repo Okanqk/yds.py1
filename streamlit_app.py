@@ -144,7 +144,7 @@ elif menu == "📚 PassageWork Çalışma":
                     for i, kelime in enumerate(kelimeler, 1):
                         st.write(f"**{i}. {kelime.get('kelime', '')}** (*{kelime.get('tur', '')}*)")
                         st.write(f"**Türkçe:** {kelime.get('tr_anlam', '')}")
-                        st.write(f"**Eş Anlamlı:** {', '.join(kelimeler.get('es_anlamli', []))}")
+                        st.write(f"**Eş Anlamlı:** {', '.join(kelime.get('es_anlamli', []))}")  # DÜZELTİLDİ!
                         st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
                         st.divider()
                 
