@@ -93,6 +93,18 @@ if menu == "🏠 Ana Sayfa":
 elif menu == "📚 PassageWork Çalışma":
     st.header("📚 PassageWork Çalışma")
     
+    # YENİLE BUTONU EKLE
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        if st.button("🔄 Yenile", key="refresh_passagework"):
+            st.rerun()
+    with col2:
+        st.write("İçerikleri yenilemek için tıkla")
+    
+    # ... geri kalan kod aynı
+elif menu == "📚 PassageWork Çalışma":
+    st.header("📚 PassageWork Çalışma")
+    
     # İçerikleri yükle
     try:
         with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
