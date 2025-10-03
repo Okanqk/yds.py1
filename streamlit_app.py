@@ -49,6 +49,124 @@ def icerik_dosyasina_kaydet(veri, dosya_adi="gemini_icerikler.json"):
         
     except Exception as e:
         return False, f"❌ Kaydetme hatası: {e}"
+        # -------------------- ÜNİTE SİSTEMİ FONKSİYONLARI --------------------
+def unite_ilerleme_kaydet(unite_id, bolum_index, tamamlandi=True):
+    """Ünite ilerlemesini kaydeder"""
+    try:
+        ilerleme_dosyasi = "unite_ilerleme.json"
+        
+        if os.path.exists(ilerleme_dosyasi):
+            with open(ilerleme_dosyasi, "r", encoding="utf-8") as f:
+                ilerlemeler = json.load(f)
+        else:
+            ilerlemeler = {}
+        
+        if unite_id not in ilerlemeler:
+            ilerlemeler[unite_id] = {"tamamlanan_bolumler": [], "son_bolum": 0}
+        
+        if tamamlandi and bolum_index not in ilerlemeler[unite_id]["tamamlanan_bolumler"]:
+            ilerlemeler[unite_id]["tamamlanan_bolumler"].append(bolum_index)
+        
+        ilerlemeler[unite_id]["son_bolum"] = bolum_index
+        
+        with open(ilerleme_dosyasi, "w", encoding="utf-8") as f:
+            json.dump(ilerlemeler, f, ensure_ascii=False, indent=2)
+        
+        return True
+    except Exception as e:
+        st.error(f"İlerleme kaydetme hatası: {e}")
+        return False
+
+def unite_ilerleme_getir(unite_id):
+    """Ünite ilerlemesini getirir"""
+    try:
+        ilerleme_dosyasi = "unite_ilerleme.json"
+        
+        if os.path.exists(ilerleme_dosyasi):
+            with open(ilerleme_dosyasi, "r", encoding="utf-8") as f:
+                ilerlemeler = json.load(f)
+                return ilerlemeler.get(unite_id, {"tamamlanan_bolumler": [], "son_bolum": 0})
+        else:
+            return {"tamamlanan_bolumler": [], "son_bolum": 0}
+    except:
+        return {"tamamlanan_bolumler": [], "son_bolum": 0}
+
+def bolum_goster(unite_data, bolum_index, ilerleme):
+    """Her bölümü gösterir"""
+    bolum = unite_data["bolumler"][bolum_index]
+    bolum_tipi = bolum["bolum_tipi"]
+    
+    st.header(f"📖 {bolum['baslik']}")
+    
+    if bolum_tipi == "kelime_tablosu":
+        st.subheader("📝 Kelime Çalışması")
+        kelimeler = bolum.get("kelimeler", [])
+        
+        for i, kelime in enumerate(kelimeler, 1):
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                st.write(f"**{kelime.get('kelime', '')}**")
+                st.write(f"*{kelime.get('tur', '')}*")
+            with col2:
+                st.write(f"**Türkçe:** {kelime.get('tr_anlam', '')}")
+                st.write(f"**Eş Anlamlı:** {', '.join(kelime.get('es_anlamli', []))}")
+                st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
+            st.divider()
+        
+        # Kelime testi butonu
+        if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
+            st.info("Kelime testi yakında eklenecek...")
+    
+    elif bolum_tipi == "paragraf":
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("🇺🇸 İngilizce")
+            st.write(bolum.get("ingilizce_paragraf", ""))
+        with col2:
+            st.subheader("🇹🇷 Türkçe Çeviri")
+            st.write(bolum.get("turkce_ceviri", ""))
+        
+        st.subheader("🔑 Önemli Kelimeler")
+        st.write(", ".join(bolum.get("onemli_kelimeler", [])))
+    
+    elif bolum_tipi == "dilbilgisi_analizi":
+        st.write(bolum.get("aciklama", ""))
+        st.subheader("📚 Dilbilgisi Notları")
+        for not_item in bolum.get("notlar", []):
+            st.write(f"• {not_item}")
+    
+    elif bolum_tipi == "test":
+        sorular = bolum.get("sorular", [])
+        for soru in sorular:
+            st.write(f"**Soru {soru.get('soru_no', '')}:** {soru.get('soru_metni', '')}")
+            
+            secenekler = soru.get("siklar", [])
+            secim = st.radio("Seçenekler:", secenekler, key=f"soru_{soru.get('soru_no', '')}")
+            
+            if st.button("Cevapla", key=f"cevap_{soru.get('soru_no', '')}"):
+                secilen_cevap = secim[0]  # A, B, C
+                dogru_cevap = soru.get("cevap", "")
+                
+                if secilen_cevap == dogru_cevap:
+                    st.success("✅ Doğru!")
+                else:
+                    st.error(f"❌ Yanlış! Doğru cevap: {dogru_cevap}")
+                
+                st.write(f"**Çözüm:** {soru.get('cozum', '')}")
+            
+            st.divider()
+    
+    # Bölüm tamamlama butonu
+    bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
+    
+    if bolum_tamamlandi:
+        st.success("✅ Bu bölümü tamamladın!")
+    else:
+        if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
+            if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
+                st.success("🎉 Bölüm tamamlandı!")
+                st.rerun()
+# -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
 
 # -------------------- ANA MENÜ --------------------
 menu = st.sidebar.radio(
