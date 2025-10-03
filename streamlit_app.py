@@ -93,38 +93,77 @@ if menu == "🏠 Ana Sayfa":
 elif menu == "📚 PassageWork Çalışma":
     st.header("📚 PassageWork Çalışma")
     
+    # İçerikleri yükle
     try:
         with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
             tum_icerikler = json.load(f)
-    except:
+    except Exception as e:
+        st.error(f"❌ Dosya okuma hatası: {e}")
         tum_icerikler = []
     
+    # İçerik yoksa bilgi göster
     if not tum_icerikler:
         st.info("📝 Henüz içerik eklenmemiş. Önce 'İçerik Ekle' sekmesinden JSON ekle!")
+        
+        # Hızlı test butonu
+        if st.button("🧪 Test İçeriği Oluştur"):
+            test_icerik = {
+                "icerik_tipi": "kelime_tablosu",
+                "baslik": "TEST - Financial Terms",
+                "kelimeler": [
+                    {
+                        "kelime": "financial",
+                        "tur": "adjective", 
+                        "tr_anlam": "finansal",
+                        "es_anlamli": ["monetary", "economic"],
+                        "ornek_cumle": "Financial planning is essential for students."
+                    }
+                ]
+            }
+            success, mesaj = icerik_dosyasina_kaydet(test_icerik)
+            if success:
+                st.success("✅ Test içeriği eklendi! Sayfayı yenile...")
+                st.rerun()
+    
     else:
+        # İçerikleri göster
         st.success(f"✅ {len(tum_icerikler)} içerik bulundu!")
         
+        # Her içeriği göster
         for icerik in tum_icerikler:
-            icerik_tipi = icerik.get('icerik_tipi', '')
+            icerik_tipi = icerik.get('icerik_tipi', 'bilinmeyen')
             baslik = icerik.get('baslik', 'İsimsiz İçerik')
+            icerik_id = icerik.get('id', 'unknown')
             
-            with st.expander(f"📁 {baslik} ({icerik_tipi})"):
+            with st.expander(f"📁 {baslik} ({icerik_tipi}) - ID: {icerik_id}"):
                 
                 if icerik_tipi == "kelime_tablosu":
-                    st.subheader("📝 Kelimeler")
                     kelimeler = icerik.get('kelimeler', [])
+                    st.write(f"**Toplam {len(kelimeler)} kelime**")
                     
-                    for kelime in kelimeler:
-                        col1, col2 = st.columns([1, 3])
-                        with col1:
-                            st.write(f"**{kelime.get('kelime', '')}**")
-                            st.write(f"*{kelime.get('tur', '')}*")
-                        with col2:
-                            st.write(f"**Anlam:** {kelime.get('tr_anlam', '')}")
-                            st.write(f"**Eş Anlamlı:** {', '.join(kelime.get('es_anlamli', []))}")
-                            st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
+                    for i, kelime in enumerate(kelimeler, 1):
+                        st.write(f"**{i}. {kelime.get('kelime', '')}** (*{kelime.get('tur', '')}*)")
+                        st.write(f"**Türkçe:** {kelime.get('tr_anlam', '')}")
+                        st.write(f"**Eş Anlamlı:** {', '.join(kelimeler.get('es_anlamli', []))}")
+                        st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
                         st.divider()
-
+                
+                elif icerik_tipi == "paragraf":
+                    st.subheader("🇺🇸 İngilizce Paragraf")
+                    st.write(icerik.get('ingilizce_paragraf', ''))
+                    st.subheader("🇹🇷 Türkçe Çeviri") 
+                    st.write(icerik.get('turkce_ceviri', ''))
+                
+                elif icerik_tipi == "test_sorulari":
+                    st.write("Test soruları burada gösterilecek")
+                
+                # Sil butonu
+                if st.button(f"🗑️ Sil", key=f"sil_{icerik_id}"):
+                    yeni_icerikler = [i for i in tum_icerikler if i.get('id') != icerik_id]
+                    with open("gemini_icerikler.json", "w", encoding="utf-8") as f:
+                        json.dump(yeni_icerikler, f, ensure_ascii=False, indent=2)
+                    st.success("✅ İçerik silindi!")
+                    st.rerun()
 # -------------------- İÇERİK EKLEME SİSTEMİ --------------------
 elif menu == "➕ İçerik Ekle":
     st.header("➕ İçerik Ekle")
