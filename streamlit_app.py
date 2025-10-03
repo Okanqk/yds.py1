@@ -207,21 +207,9 @@ if menu == "🏠 Ana Sayfa":
     
     st.success("🎯 **Başlamak için soldaki menüden bir bölüm seç!**")
 
-# -------------------- PASSAGEWORK ÇALIŞMA SAYFASI --------------------
+# -------------------- YENİ PASSAGEWORK SAYFASI (ÜNİTE SİSTEMİ) --------------------
 elif menu == "📚 PassageWork Çalışma":
-    st.header("📚 PassageWork Çalışma")
-    
-    # YENİLE BUTONU EKLE
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        if st.button("🔄 Yenile", key="refresh_passagework"):
-            st.rerun()
-    with col2:
-        st.write("İçerikleri yenilemek için tıkla")
-    
-    # ... geri kalan kod aynı
-elif menu == "📚 PassageWork Çalışma":
-    st.header("📚 PassageWork Çalışma")
+    st.header("📚 PassageWork Çalışma - Ünite Sistemi")
     
     # İçerikleri yükle
     try:
@@ -231,69 +219,128 @@ elif menu == "📚 PassageWork Çalışma":
         st.error(f"❌ Dosya okuma hatası: {e}")
         tum_icerikler = []
     
-    # İçerik yoksa bilgi göster
-    if not tum_icerikler:
-        st.info("📝 Henüz içerik eklenmemiş. Önce 'İçerik Ekle' sekmesinden JSON ekle!")
+    # Sadece ünite içeriklerini filtrele
+    unite_icerikler = [icerik for icerik in tum_icerikler if icerik.get("icerik_tipi") == "unite"]
+    
+    if not unite_icerikler:
+        st.info("📝 Henüz ünite eklenmemiş. Önce 'İçerik Ekle' sekmesinden ÜNİTE JSON'u ekle!")
         
-        # Hızlı test butonu
-        if st.button("🧪 Test İçeriği Oluştur"):
-            test_icerik = {
-                "icerik_tipi": "kelime_tablosu",
-                "baslik": "TEST - Financial Terms",
-                "kelimeler": [
-                    {
-                        "kelime": "financial",
-                        "tur": "adjective", 
-                        "tr_anlam": "finansal",
-                        "es_anlamli": ["monetary", "economic"],
-                        "ornek_cumle": "Financial planning is essential for students."
-                    }
-                ]
-            }
-            success, mesaj = icerik_dosyasina_kaydet(test_icerik)
-            if success:
-                st.success("✅ Test içeriği eklendi! Sayfayı yenile...")
-                st.rerun()
+        # Örnek ünite formatı
+        with st.expander("🎯 Örnek Ünite JSON Formatı"):
+            st.code("""
+{
+  "icerik_tipi": "unite",
+  "unite_adi": "MONEY - Banking for Students",
+  "unite_no": 1,
+  "seviye": "intermediate",
+  "bolumler": [
+    {
+      "bolum_tipi": "kelime_tablosu",
+      "baslik": "Önemli Kelimeler",
+      "kelimeler": [
+        {
+          "kelime": "financial",
+          "tur": "adjective",
+          "tr_anlam": "finansal",
+          "es_anlamli": ["monetary", "economic"],
+          "ornek_cumle": "Organising your financial affairs is not easy."
+        }
+      ]
+    },
+    {
+      "bolum_tipi": "paragraf",
+      "baslik": "Okuma Parçası",
+      "ingilizce_paragraf": "Organising your financial affairs is not easy...",
+      "turkce_ceviri": "Finansal işlerinizi organize etmek kolay değildir...",
+      "onemli_kelimeler": ["financial", "grant", "organising"]
+    },
+    {
+      "bolum_tipi": "dilbilgisi_analizi", 
+      "baslik": "Dilbilgisi Notları",
+      "aciklama": "Bu paragraftaki önemli dilbilgisi yapıları",
+      "notlar": ["Present Simple tense", "Conditional sentences"]
+    },
+    {
+      "bolum_tipi": "test",
+      "baslik": "Ünite Testi", 
+      "sorular": [
+        {
+          "soru_no": 1,
+          "soru_metni": "'Financial' kelimesinin eş anlamlısı hangisidir?",
+          "siklar": ["A) monetary", "B) overseas", "C) grant"],
+          "cevap": "A",
+          "cozum": "'Financial' = finansal, 'monetary' = parasal"
+        }
+      ]
+    }
+  ]
+}
+            """, language="json")
     
     else:
-        # İçerikleri göster
-        st.success(f"✅ {len(tum_icerikler)} içerik bulundu!")
+        # Ünite seçimi
+        st.success(f"✅ {len(unite_icerikler)} ünite bulundu!")
         
-        # Her içeriği göster
-        for icerik in tum_icerikler:
-            icerik_tipi = icerik.get('icerik_tipi', 'bilinmeyen')
-            baslik = icerik.get('baslik', 'İsimsiz İçerik')
-            icerik_id = icerik.get('id', 'unknown')
-            
-            with st.expander(f"📁 {baslik} ({icerik_tipi}) - ID: {icerik_id}"):
-                
-                if icerik_tipi == "kelime_tablosu":
-                    kelimeler = icerik.get('kelimeler', [])
-                    st.write(f"**Toplam {len(kelimeler)} kelime**")
-                    
-                    for i, kelime in enumerate(kelimeler, 1):
-                        st.write(f"**{i}. {kelime.get('kelime', '')}** (*{kelime.get('tur', '')}*)")
-                        st.write(f"**Türkçe:** {kelime.get('tr_anlam', '')}")
-                        st.write(f"**Eş Anlamlı:** {', '.join(kelime.get('es_anlamli', []))}")  # DÜZELTİLDİ!
-                        st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
-                        st.divider()
-                
-                elif icerik_tipi == "paragraf":
-                    st.subheader("🇺🇸 İngilizce Paragraf")
-                    st.write(icerik.get('ingilizce_paragraf', ''))
-                    st.subheader("🇹🇷 Türkçe Çeviri") 
-                    st.write(icerik.get('turkce_ceviri', ''))
-                
-                elif icerik_tipi == "test_sorulari":
-                    st.write("Test soruları burada gösterilecek")
-                
-                # Sil butonu
-                if st.button(f"🗑️ Sil", key=f"sil_{icerik_id}"):
-                    yeni_icerikler = [i for i in tum_icerikler if i.get('id') != icerik_id]
-                    with open("gemini_icerikler.json", "w", encoding="utf-8") as f:
-                        json.dump(yeni_icerikler, f, ensure_ascii=False, indent=2)
-                    st.success("✅ İçerik silindi!")
+        # Ünite listesi
+        secilen_unite_index = st.selectbox(
+            "📋 Çalışmak istediğin üniteyi seç:",
+            range(len(unite_icerikler)),
+            format_func=lambda i: f"{unite_icerikler[i].get('unite_adi', 'İsimsiz')} - Seviye: {unite_icerikler[i].get('seviye', 'unknown')}"
+        )
+        
+        secilen_unite = unite_icerikler[secilen_unite_index]
+        unite_adi = secilen_unite.get("unite_adi", "İsimsiz Ünite")
+        bolumler = secilen_unite.get("bolumler", [])
+        
+        # İlerlemeyi getir
+        ilerleme = unite_ilerleme_getir(unite_adi)
+        
+        # İlerleme çubuğu
+        tamamlanan_sayi = len(ilerleme["tamamlanan_bolumler"])
+        toplam_bolum = len(bolumler)
+        ilerleme_yuzdesi = (tamamlanan_sayi / toplam_bolum) * 100 if toplam_bolum > 0 else 0
+        
+        st.subheader(f"📊 İlerleme: %{ilerleme_yuzdesi:.0f}")
+        st.progress(ilerleme_yuzdesi / 100)
+        st.write(f"✅ {tamamlanan_sayi}/{toplam_bolum} bölüm tamamlandı")
+        
+        # Bölüm seçimi
+        bolum_isimleri = [f"{i+1}. {bolum['baslik']} ({bolum['bolum_tipi']})" for i, bolum in enumerate(bolumler)]
+        
+        # Otomatik olarak son kaldığın bölümü seç
+        son_bolum = ilerleme["son_bolum"]
+        if son_bolum >= len(bolum_isimleri):
+            son_bolum = 0
+        
+        secilen_bolum_index = st.selectbox(
+            "🎯 Çalışmak istediğin bölümü seç:",
+            range(len(bolumler)),
+            index=son_bolum,
+            format_func=lambda i: bolum_isimleri[i]
+        )
+        
+        st.divider()
+        
+        # Seçilen bölümü göster
+        bolum_goster(secilen_unite, secilen_bolum_index, ilerleme)
+        
+        # Navigasyon butonları
+        col1, col2, col3 = st.columns([1, 2, 1])
+        
+        with col1:
+            if secilen_bolum_index > 0:
+                if st.button("⬅️ Önceki Bölüm"):
+                    unite_ilerleme_kaydet(unite_adi, secilen_bolum_index - 1, False)
                     st.rerun()
+        
+        with col3:
+            if secilen_bolum_index < len(bolumler) - 1:
+                if st.button("Sonraki Bölüm ➡️"):
+                    unite_ilerleme_kaydet(unite_adi, secilen_bolum_index + 1, False)
+                    st.rerun()
+            elif tamamlanan_sayi == toplam_bolum:
+                st.success("🎉 TEBRİKLER! Bu üniteyi tamamladın!")
+# -------------------- YENİ PASSAGEWORK SAYFASI BURADA BİTİYOR --------------------
 # -------------------- İÇERİK EKLEME SİSTEMİ --------------------
 elif menu == "➕ İçerik Ekle":
     st.header("➕ İçerik Ekle")
