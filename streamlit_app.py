@@ -114,8 +114,8 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
             st.divider()
         
         # Kelime testi butonu
-        if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
-            st.info("Kelime testi yakında eklenecek...")
+if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
+    kelime_testi_uygulamasi(kelimeler, bolum_index)
     
     elif bolum_tipi == "paragraf":
         col1, col2 = st.columns(2)
@@ -167,6 +167,63 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
                 st.success("🎉 Bölüm tamamlandı!")
                 st.rerun()
 # -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
+# -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
+
+# -------------------- KELİME TESTİ FONKSİYONU --------------------
+def kelime_testi_uygulamasi(kelimeler, bolum_index):
+    """Basit kelime testi uygulaması"""
+    st.subheader("🧪 Kelime Tekrar Testi")
+    
+    if not kelimeler:
+        st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
+        return
+    
+    # Basit test - İngilizce'den Türkçe'ye
+    st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
+    
+    dogru_sayisi = 0
+    toplam_soru = len(kelimeler)
+    
+    for i, kelime in enumerate(kelimeler):
+        st.write(f"**{i+1}. {kelime['kelime']}**")
+        
+        # Doğru cevabı ve 2 yanlış şık hazırla
+        import random
+        diger_kelimeler = [k for k in kelimeler if k != kelime]
+        yanlis_secenekler = random.sample(diger_kelimeler, min(2, len(diger_kelimeler)))
+        
+        secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
+        random.shuffle(secenekler)
+        
+        secim = st.radio(
+            f"Anlamı nedir?",
+            secenekler,
+            key=f"test_{bolum_index}_{i}"
+        )
+        
+        # Cevap butonu
+        if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
+            if secim == kelime['tr_anlam']:
+                st.success("✅ Doğru!")
+                dogru_sayisi += 1
+            else:
+                st.error(f"❌ Yanlış! Doğru cevap: **{kelime['tr_anlam']}**")
+            
+            # Mini bilgi
+            with st.expander("ℹ️ Kelime Detayı"):
+                st.write(f"**Tür:** {kelime.get('tur', '')}")
+                if kelime.get('es_anlamli'):
+                    st.write(f"**Eş Anlamlı:** {', '.join(kelime['es_anlamli'])}")
+                if kelime.get('ornek_cumle'):
+                    st.write(f"**Örnek:** {kelime['ornek_cumle']}")
+        
+        st.divider()
+    
+    # Sonuç
+    if toplam_soru > 0:
+        st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
+
+
 
 # -------------------- ANA MENÜ --------------------
 menu = st.sidebar.radio(
