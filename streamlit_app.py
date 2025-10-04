@@ -655,7 +655,7 @@ elif menu == "🔧 Ayarlar":
 # AYARLAR SEKMESİNE BUNU EKLE:
 elif menu == "🔧 Ayarlar":
     st.header("🔧 Ayarlar")
-        st.subheader("🤖 DeepSeek API Ayarları")
+    st.subheader("🤖 DeepSeek API Ayarları")
     
     # API key için session state
     if 'deepseek_api_key' not in st.session_state:
