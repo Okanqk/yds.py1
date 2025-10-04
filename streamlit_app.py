@@ -178,6 +178,10 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
         st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
         return
     
+    # Session state kontrolü
+    if f'test_sonuclari_{bolum_index}' not in st.session_state:
+        st.session_state[f'test_sonuclari_{bolum_index}'] = {}
+    
     # Basit test - İngilizce'den Türkçe'ye
     st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
     
@@ -195,14 +199,35 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
         secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
         random.shuffle(secenekler)
         
+        # Seçim için unique key
+        secim_key = f"secim_{bolum_index}_{i}"
+        
+        # Eğer daha önce seçim yapılmışsa onu göster, yoksa ilk şıkkı
+        default_index = 0
+        if secim_key in st.session_state:
+            try:
+                default_index = secenekler.index(st.session_state[secim_key])
+            except:
+                default_index = 0
+        
         secim = st.radio(
             f"Anlamı nedir?",
             secenekler,
-            key=f"test_{bolum_index}_{i}"
+            index=default_index,
+            key=secim_key
         )
         
-        # Cevap butonu
+        # Seçimi session state'e kaydet
+        st.session_state[secim_key] = secim
+        
+        # Cevap kontrolü
+        cevap_key = f"cevap_goster_{bolum_index}_{i}"
+        
         if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
+            st.session_state[cevap_key] = True
+        
+        # Cevabı göster
+        if cevap_key in st.session_state and st.session_state[cevap_key]:
             if secim == kelime['tr_anlam']:
                 st.success("✅ Doğru!")
                 dogru_sayisi += 1
@@ -222,7 +247,13 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
     # Sonuç
     if toplam_soru > 0:
         st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
-
+        
+        # Testi sıfırla butonu
+        if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
+            for key in list(st.session_state.keys()):
+                if key.startswith(f"secim_{bolum_index}_") or key.startswith(f"cevap_goster_{bolum_index}_"):
+                    del st.session_state[key]
+            st.rerun()
 
 
 # -------------------- ANA MENÜ --------------------
