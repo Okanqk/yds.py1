@@ -240,8 +240,8 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
     
     st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
     
-        dogru_sayisi = 0
-    yanlis_sayisi = 0  # Yeni eklenen satır
+    dogru_sayisi = 0
+    yanlis_sayisi = 0
     toplam_soru = len(kelimeler)
 
     for i, kelime in enumerate(kelimeler):
