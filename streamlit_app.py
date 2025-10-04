@@ -609,7 +609,7 @@ elif menu == "➕ İçerik Ekle":
             st.warning("⚠️ Lütfen JSON yapıştırın")
 # -------------------- AYARLAR SAYFASI --------------------
 elif menu == "🔧 Ayarlar":
-st.header("🔧 Ayarlar")
+    st.header("🔧 Ayarlar")
     st.subheader("🤖 DeepSeek API Ayarları")
     
     # API key için session state
