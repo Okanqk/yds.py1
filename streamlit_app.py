@@ -172,13 +172,19 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
 # -------------------- KELİME TESTİ FONKSİYONU --------------------
 def kelime_testi_uygulamasi(kelimeler, bolum_index):
     """Basit kelime testi uygulaması"""
-    st.subheader("🧪 Kelime Tekrar Testi")
     
     if not kelimeler:
         st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
         return
     
-    # Basit test - İngilizce'den Türkçe'ye
+    # Test durumu için session state
+    if f'test_durum_{bolum_index}' not in st.session_state:
+        st.session_state[f'test_durum_{bolum_index}'] = {
+            'cevaplar': {},
+            'goster': {},
+            'secenekler': {}  # Yeni: Şıkları saklayacağız
+        }
+    
     st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
     
     dogru_sayisi = 0
@@ -187,25 +193,44 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
     for i, kelime in enumerate(kelimeler):
         st.write(f"**{i+1}. {kelime['kelime']}**")
         
-        # Doğru cevabı ve 2 yanlış şık hazırla
-        import random
-        diger_kelimeler = [k for k in kelimeler if k != kelime]
-        yanlis_secenekler = random.sample(diger_kelimeler, min(2, len(diger_kelimeler)))
+        # Şıkları hazırla - SADECE İLK SEFERDE shuffle yap
+        secenekler_key = f"secenekler_{i}"
+        if secenekler_key not in st.session_state[f'test_durum_{bolum_index}']['secenekler']:
+            import random
+            diger_kelimeler = [k for k in kelimeler if k != kelime]
+            yanlis_secenekler = random.sample(diger_kelimeler, min(2, len(diger_kelimeler)))
+            
+            secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
+            random.shuffle(secenekler)
+            st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key] = secenekler
+        else:
+            secenekler = st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key]
         
-        secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
-        random.shuffle(secenekler)
+        # Seçim için unique key
+        secim_key = f"sec_{i}"
         
-        # Basit radio butonu - session state kullanmadan
+        # Seçim yapılmış mı kontrol et (ilk seferde ilk şıkkı seç)
+        if secim_key not in st.session_state[f'test_durum_{bolum_index}']['cevaplar']:
+            st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secenekler[0]
+        
+        # Radio butonu
         secim = st.radio(
             "Anlamı nedir?",
             secenekler,
+            index=secenekler.index(st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key]),
             key=f"radio_{bolum_index}_{i}"
         )
         
-        # Cevap kontrolü için checkbox kullan (sayfayı yenilemez)
-        cevap_goster = st.checkbox(f"Cevabı göster", key=f"check_{bolum_index}_{i}")
+        # Seçimi kaydet
+        st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secim
         
-        if cevap_goster:
+        # Cevap göster butonu
+        goster_key = f"goster_{i}"
+        if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
+            st.session_state[f'test_durum_{bolum_index}']['goster'][goster_key] = True
+        
+        # Cevabı göster
+        if goster_key in st.session_state[f'test_durum_{bolum_index}']['goster']:
             if secim == kelime['tr_anlam']:
                 st.success("✅ Doğru!")
                 dogru_sayisi += 1
@@ -219,14 +244,17 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
                     st.write(f"**Eş Anlamlı:** {', '.join(kelime['es_anlamli'])}")
                 if kelime.get('ornek_cumle'):
                     st.write(f"**Örnek:** {kelime['ornek_cumle']}")
-        else:
-            st.info("👆 Cevabı kontrol etmek için yukarıdaki kutuyu işaretle")
         
         st.divider()
     
     # Sonuç
     if toplam_soru > 0:
         st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
+        
+        # Testi sıfırla
+        if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
+            st.session_state[f'test_durum_{bolum_index}'] = {'cevaplar': {}, 'goster': {}, 'secenekler': {}}
+            st.rerun()
 
 # -------------------- ANA MENÜ --------------------
 menu = st.sidebar.radio(
