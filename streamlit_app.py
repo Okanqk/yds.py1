@@ -178,10 +178,6 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
         st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
         return
     
-    # Session state kontrolü
-    if f'test_sonuclari_{bolum_index}' not in st.session_state:
-        st.session_state[f'test_sonuclari_{bolum_index}'] = {}
-    
     # Basit test - İngilizce'den Türkçe'ye
     st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
     
@@ -199,35 +195,17 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
         secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
         random.shuffle(secenekler)
         
-        # Seçim için unique key
-        secim_key = f"secim_{bolum_index}_{i}"
-        
-        # Eğer daha önce seçim yapılmışsa onu göster, yoksa ilk şıkkı
-        default_index = 0
-        if secim_key in st.session_state:
-            try:
-                default_index = secenekler.index(st.session_state[secim_key])
-            except:
-                default_index = 0
-        
+        # Basit radio butonu - session state kullanmadan
         secim = st.radio(
-            f"Anlamı nedir?",
+            "Anlamı nedir?",
             secenekler,
-            index=default_index,
-            key=secim_key
+            key=f"radio_{bolum_index}_{i}"
         )
         
-        # Seçimi session state'e kaydet
-        st.session_state[secim_key] = secim
+        # Cevap kontrolü için checkbox kullan (sayfayı yenilemez)
+        cevap_goster = st.checkbox(f"Cevabı göster", key=f"check_{bolum_index}_{i}")
         
-        # Cevap kontrolü
-        cevap_key = f"cevap_goster_{bolum_index}_{i}"
-        
-        if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
-            st.session_state[cevap_key] = True
-        
-        # Cevabı göster
-        if cevap_key in st.session_state and st.session_state[cevap_key]:
+        if cevap_goster:
             if secim == kelime['tr_anlam']:
                 st.success("✅ Doğru!")
                 dogru_sayisi += 1
@@ -241,20 +219,14 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
                     st.write(f"**Eş Anlamlı:** {', '.join(kelime['es_anlamli'])}")
                 if kelime.get('ornek_cumle'):
                     st.write(f"**Örnek:** {kelime['ornek_cumle']}")
+        else:
+            st.info("👆 Cevabı kontrol etmek için yukarıdaki kutuyu işaretle")
         
         st.divider()
     
     # Sonuç
     if toplam_soru > 0:
         st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
-        
-        # Testi sıfırla butonu
-        if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
-            for key in list(st.session_state.keys()):
-                if key.startswith(f"secim_{bolum_index}_") or key.startswith(f"cevap_goster_{bolum_index}_"):
-                    del st.session_state[key]
-            st.rerun()
-
 
 # -------------------- ANA MENÜ --------------------
 menu = st.sidebar.radio(
