@@ -210,6 +210,55 @@ def bolum_tamamlandi_kaydet(unite_adi, bolum_index, kelime_sayisi):
         bolum_index=bolum_index,
         kelime_sayisi=kelime_sayisi
     )
+# -------------------- DEEPSEEK AI ENTEGRASYONU --------------------
+def deepseek_analiz_yap(istatistik_verileri):
+    """İstatistik verilerini DeepSeek AI ile analiz eder"""
+    try:
+        # API key - şimdilik boş, sonra ekleyeceğiz
+        api_key = ""  # Buraya DeepSeek API key gelecek
+        
+        if not api_key:
+            return "🔑 Lütfen DeepSeek API key'inizi '🔧 Ayarlar' sayfasına ekleyin."
+        
+        # İstatistik verilerini hazırla
+        basit_veriler = {
+            "toplam_gun": len(set([v["tarih"][:10] for v in istatistik_verileri])),
+            "tamamlanan_bolum": len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"]),
+            "toplam_kelime": sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri]),
+            "test_basari": [],
+            "son_7_gun_aktivite": []
+        }
+        
+        # Test başarı oranlarını ekle
+        testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
+        for test in testler:
+            basit_veriler["test_basari"].append(test.get("basari_orani", 0))
+        
+        # Bu kısım şimdilik mock data döndürsün
+        # Gerçek API entegrasyonu için hazırlık
+        
+        mock_analiz = f"""
+🤖 **AI ANALİZ RAPORU**
+
+🎯 **Genel Değerlendirme:**
+Toplam {basit_veriler['toplam_gun']} gün çalışmışsın ve {basit_veriler['tamamlanan_bolum']} bölüm tamamlamışsın. {basit_veriler['toplam_kelime']} kelime öğrenmişsin - harika başlangıç! 
+
+📈 **Performans Analizi:**
+{len(testler)} test tamamlamışsın. Ortalama başarı oranın: %{sum(basit_veriler['test_basari'])/len(basit_veriler['test_basari'])*100:.0f if testler else 0}
+
+💡 **Öneriler:**
+1. Her gün en az 15 dakika çalışmaya devam et
+2. Zorlandığın kelimeleri tekrar et
+3. Testlerde yanlış yaptığın soruları gözden geçir
+
+🚀 **Motivasyon:**
+Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
+"""
+        
+        return mock_analiz
+        
+    except Exception as e:
+        return f"❌ AI analiz hatası: {str(e)}"
 
 def test_tamamlandi_kaydet(unite_adi, dogru_sayisi, yanlis_sayisi, toplam_soru):
     """Test tamamlandığında istatistik kaydeder"""
@@ -580,6 +629,30 @@ elif menu == "🔧 Ayarlar":
 # AYARLAR SEKMESİNE BUNU EKLE:
 elif menu == "🔧 Ayarlar":
     st.header("🔧 Ayarlar")
+        st.subheader("🤖 DeepSeek API Ayarları")
+    
+    # API key için session state
+    if 'deepseek_api_key' not in st.session_state:
+        st.session_state.deepseek_api_key = ""
+    
+    api_key = st.text_input(
+        "DeepSeek API Key:", 
+        value=st.session_state.deepseek_api_key,
+        type="password",
+        placeholder="sk-... şeklinde API key'inizi girin"
+    )
+    
+    if api_key:
+        st.session_state.deepseek_api_key = api_key
+        st.success("✅ API key kaydedildi!")
+    
+    st.info("""
+    **DeepSeek API Key Nasıl Alınır?**
+    1. https://platform.deepseek.com/ adresine git
+    2. Üye ol/giriş yap
+    3. API Keys bölümünden yeni key oluştur
+    4. Buraya 'sk-...' şeklindeki key'i yapıştır
+    """)
     
     # DEBUG: Dosya içeriğini göster
     st.subheader("🐛 Debug - Dosya İçeriği")
@@ -665,10 +738,15 @@ elif menu == "📊 İstatistiklerim":
                     st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
                     st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
         
-        # AI ANALİZ BUTONU (şimdilik boş)
+               # AI ANALİZ BUTONU
         st.divider()
-        if st.button("🤖 AI ile Detaylı Analiz Yap"):
-            st.info("🚧 AI analiz özelliği yakında eklenecek...")
+        st.subheader("🤖 AI İle Detaylı Analiz")
+        
+        if st.button("🎯 AI Analiz Yap", type="primary"):
+            with st.spinner("AI verilerinizi analiz ediyor..."):
+                ai_rapor = deepseek_analiz_yap(istatistik_verileri)
+                st.success("AI analiz tamamlandı!")
+                st.markdown(ai_rapor)
 
 # -------------------- İSTATİSTİK SAYFASI BİTTİ --------------------
 # -------------------- BOŞ SAYFALAR --------------------
