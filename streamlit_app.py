@@ -490,6 +490,20 @@ elif menu == "📚 PassageWork Çalışma":
                     st.rerun()
             elif tamamlanan_sayi == toplam_bolum:
                 st.success("🎉 TEBRİKLER! Bu üniteyi tamamladın!")
+
+    # Bölüm tamamlama butonu - EN SONA EKLENECEK
+    bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
+    
+    if bolum_tamamlandi:
+        st.success("✅ Bu bölümü tamamladın!")
+    else:
+        if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
+            if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
+                # İSTATİSTİK KAYDI EKLENDİ
+                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
+                bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
+                st.success("🎉 Bölüm tamamlandı!")
+                st.rerun()
 # -------------------- YENİ PASSAGEWORK SAYFASI BURADA BİTİYOR --------------------
 # -------------------- İÇERİK EKLEME SİSTEMİ --------------------
 elif menu == "➕ İçerik Ekle":
