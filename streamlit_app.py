@@ -609,8 +609,8 @@ elif menu == "➕ İçerik Ekle":
             st.warning("⚠️ Lütfen JSON yapıştırın")
 # -------------------- AYARLAR SAYFASI --------------------
 elif menu == "🔧 Ayarlar":
-    st.header("🔧 Ayarlar")
-        st.subheader("🤖 DeepSeek API Ayarları")
+st.header("🔧 Ayarlar")
+    st.subheader("🤖 DeepSeek API Ayarları")
     
     # API key için session state
     if 'deepseek_api_key' not in st.session_state:
