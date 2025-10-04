@@ -114,7 +114,7 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
             st.divider()
         
         # Kelime testi butonu
-if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
+    if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
     kelime_testi_uygulamasi(kelimeler, bolum_index)
     
     elif bolum_tipi == "paragraf":
