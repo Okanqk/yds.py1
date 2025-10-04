@@ -814,15 +814,17 @@ Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
                     st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
                     st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
         
-                      # AI ANALİZ BUTONU
-        st.divider()
-        st.subheader("🤖 AI İle Detaylı Analiz")
-        
-        if st.button("🎯 AI Analiz Yap", type="primary"):
-            with st.spinner("AI verilerinizi analiz ediyor..."):
-                ai_rapor = deepseek_analiz_yap(istatistik_verileri)
-                st.success("AI analiz tamamlandı!")
-                st.markdown(ai_rapor)
+                     # AI ANALİZ BUTONU
+st.divider()
+st.subheader("🤖 AI İle Detaylı Analiz")
+
+if st.button("🎯 AI Analiz Yap", type="primary"):
+    with st.spinner("AI verilerinizi analiz ediyor..."):
+        ai_rapor = deepseek_analiz_yap(istatistik_verileri)
+        st.success("AI analiz tamamlandı!")
+        st.markdown(ai_rapor)
+else:
+    st.info("👆 Yukarıdaki butona tıklayarak AI analiz yapabilirsiniz")
 
 # -------------------- İSTATİSTİK SAYFASI BİTTİ --------------------
 # -------------------- BOŞ SAYFALAR --------------------
