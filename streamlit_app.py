@@ -300,9 +300,18 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
         
         st.divider()
     
-    # Sonuç
+        # Sonuç
     if toplam_soru > 0:
         st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
+        
+        # İSTATİSTİK KAYDI
+        if dogru_sayisi + yanlis_sayisi > 0:  # En az 1 soru cevaplanmışsa
+            test_tamamlandi_kaydet(
+                unite_adi="Kelime Testi", 
+                dogru_sayisi=dogru_sayisi,
+                yanlis_sayisi=yanlis_sayisi, 
+                toplam_soru=toplam_soru
+            )
         
         # Testi sıfırla
         if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
@@ -553,7 +562,87 @@ elif menu == "🔧 Ayarlar":
         st.json(icerikler)  # Tüm içeriği göster
     except Exception as e:
         st.error(f"❌ Dosya okunamadı: {e}")
+# -------------------- İSTATİSTİKLERİM SAYFASI --------------------
+elif menu == "📊 İstatistiklerim":
+    st.header("📊 İstatistiklerim")
+    
+    # İstatistik verilerini yükle
+    try:
+        with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
+            istatistik_verileri = json.load(f)
+    except:
+        istatistik_verileri = []
+        st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
+    
+    if not istatistik_verileri:
+        st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
+    else:
+        # TEMEL METRİKLER
+        st.subheader("🏆 Genel İlerleme")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            # Toplam çalışılan gün sayısı
+            tarihler = set([veri["tarih"][:10] for veri in istatistik_verileri])
+            st.metric("📅 Çalışılan Gün", len(tarihler))
+        
+        with col2:
+            # Toplam bölüm sayısı
+            bolum_sayisi = len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"])
+            st.metric("✅ Tamamlanan Bölüm", bolum_sayisi)
+        
+        with col3:
+            # Toplam kelime sayısı
+            toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri])
+            st.metric("📚 Toplam Kelime", toplam_kelime)
+        
+        with col4:
+            # Ortalama başarı oranı
+            testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
+            if testler:
+                ortalama_basari = sum([v.get("basari_orani", 0) for v in testler]) / len(testler)
+                st.metric("📊 Başarı Oranı", f"%{ortalama_basari*100:.0f}")
+            else:
+                st.metric("📊 Başarı Oranı", "%-")
+        
+        # GÜNLÜK AKTİVİTE
+        st.subheader("📈 Günlük Aktivite")
+        
+        # Son 7 günlük veri
+        from datetime import datetime, timedelta
+        bugun = datetime.now().date()
+        son_7_gun = [(bugun - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+        
+        gunluk_veriler = []
+        for gun in son_7_gun:
+            gun_verileri = [v for v in istatistik_verileri if v["tarih"][:10] == gun]
+            gunluk_veriler.append(len(gun_verileri))
+        
+        # Çizgi grafik
+        chart_data = {"Günler": son_7_gun, "Aktivite": gunluk_veriler}
+        st.line_chart(chart_data, x="Günler", y="Aktivite")
+        
+        # DETAYLI LİSTE
+        st.subheader("📋 Detaylı Kayıtlar")
+        
+        for veri in reversed(istatistik_verileri[-10:]):  # Son 10 kayıt
+            with st.expander(f"{veri['tarih']} - {veri['olay_tipi']}"):
+                if veri["olay_tipi"] == "bolum_tamamlandi":
+                    st.write(f"**Ünite:** {veri.get('unite_adi', '')}")
+                    st.write(f"**Bölüm:** {veri.get('bolum_index', '') + 1}")
+                    st.write(f"**Kelime Sayısı:** {veri.get('kelime_sayisi', 0)}")
+                elif veri["olay_tipi"] == "test_tamamlandi":
+                    st.write(f"**Doğru:** {veri.get('dogru_sayisi', 0)}")
+                    st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
+                    st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
+        
+        # AI ANALİZ BUTONU (şimdilik boş)
+        st.divider()
+        if st.button("🤖 AI ile Detaylı Analiz Yap"):
+            st.info("🚧 AI analiz özelliği yakında eklenecek...")
 
+# -------------------- İSTATİSTİK SAYFASI BİTTİ --------------------
 # -------------------- BOŞ SAYFALAR --------------------
 elif menu == "🎯 YDS Çalışma Soruları":
     st.header("🎯 YDS Çalışma Soruları")
