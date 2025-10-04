@@ -112,10 +112,10 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
                 st.write(f"**Eş Anlamlı:** {', '.join(kelime.get('es_anlamli', []))}")
                 st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
             st.divider()
-        
+
         # Kelime testi butonu
-    if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
-    kelime_testi_uygulamasi(kelimeler, bolum_index)
+        if st.button("🧪 Kelimeleri Test Et", key=f"test_kelime_{bolum_index}"):
+            kelime_testi_uygulamasi(kelimeler, bolum_index)
     
     elif bolum_tipi == "paragraf":
         col1, col2 = st.columns(2)
