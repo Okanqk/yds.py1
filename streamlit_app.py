@@ -240,9 +240,10 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
     
     st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
     
-    dogru_sayisi = 0
+        dogru_sayisi = 0
+    yanlis_sayisi = 0  # Yeni eklenen satır
     toplam_soru = len(kelimeler)
-    
+
     for i, kelime in enumerate(kelimeler):
         st.write(f"**{i+1}. {kelime['kelime']}**")
         
@@ -492,6 +493,19 @@ elif menu == "📚 PassageWork Çalışma":
                 st.success("🎉 TEBRİKLER! Bu üniteyi tamamladın!")
 
     # Bölüm tamamlama butonu - EN SONA EKLENECEK
+    bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
+    
+    if bolum_tamamlandi:
+        st.success("✅ Bu bölümü tamamladın!")
+    else:
+        if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
+            if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
+                # İSTATİSTİK KAYDI EKLENDİ
+                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
+                bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
+                st.success("🎉 Bölüm tamamlandı!")
+                st.rerun()
+    # -------------------- BÖLÜM TAMAMLAMA BUTONU --------------------
     bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
     
     if bolum_tamamlandi:
