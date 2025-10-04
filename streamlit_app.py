@@ -319,9 +319,9 @@ def kelime_testi_uygulamasi(kelimeler, bolum_index):
             st.rerun()
 
 # -------------------- ANA MENÜ --------------------
-menu = st.sidebar.radio(
+menu = st.sidebar.selectbox(
     "📋 Menü",
-    ["🏠 Ana Sayfa", "📚 PassageWork Çalışma", "🎯 YDS Çalışma Soruları", "📝 Deneme Testleri", "🏆 Çıkmış Sorular", "➕ İçerik Ekle", "🔧 Ayarlar"],
+    ["🏠 Ana Sayfa", "📚 PassageWork Çalışma", "📊 İstatistiklerim", "🎯 YDS Çalışma Soruları", "📝 Deneme Testleri", "🏆 Çıkmış Sorular", "➕ İçerik Ekle", "🔧 Ayarlar"],
     key="main_menu"
 )
 
