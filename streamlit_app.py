@@ -164,10 +164,63 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
     else:
         if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
             if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
+                # İSTATİSTİK KAYDI EKLENDİ
+                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
+                bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
                 st.success("🎉 Bölüm tamamlandı!")
                 st.rerun()
 # -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
 # -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
+# -------------------- İSTATİSTİK VERİ TOPLAMA SİSTEMİ --------------------
+def istatistik_veri_kaydet(olay_tipi, **kwargs):
+    """İstatistik verilerini JSON'a kaydeder"""
+    try:
+        istatistik_dosyasi = "istatistik_verileri.json"
+        
+        # Mevcut verileri oku veya yeni oluştur
+        if os.path.exists(istatistik_dosyasi):
+            with open(istatistik_dosyasi, "r", encoding="utf-8") as f:
+                veriler = json.load(f)
+        else:
+            veriler = []
+        
+        # Yeni kayıt oluştur
+        yeni_kayit = {
+            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "olay_tipi": olay_tipi,
+            **kwargs
+        }
+        
+        veriler.append(yeni_kayit)
+        
+        # Dosyaya kaydet
+        with open(istatistik_dosyasi, "w", encoding="utf-8") as f:
+            json.dump(veriler, f, ensure_ascii=False, indent=2)
+            
+        return True
+    except Exception as e:
+        print(f"İstatistik kayıt hatası: {e}")
+        return False
+
+def bolum_tamamlandi_kaydet(unite_adi, bolum_index, kelime_sayisi):
+    """Bölüm tamamlandığında istatistik kaydeder"""
+    return istatistik_veri_kaydet(
+        olay_tipi="bolum_tamamlandi",
+        unite_adi=unite_adi,
+        bolum_index=bolum_index,
+        kelime_sayisi=kelime_sayisi
+    )
+
+def test_tamamlandi_kaydet(unite_adi, dogru_sayisi, yanlis_sayisi, toplam_soru):
+    """Test tamamlandığında istatistik kaydeder"""
+    return istatistik_veri_kaydet(
+        olay_tipi="test_tamamlandi",
+        unite_adi=unite_adi,
+        dogru_sayisi=dogru_sayisi,
+        yanlis_sayisi=yanlis_sayisi,
+        toplam_soru=toplam_soru,
+        basari_orani=dogru_sayisi/toplam_soru if toplam_soru > 0 else 0
+    )
 
 # -------------------- KELİME TESTİ FONKSİYONU --------------------
 def kelime_testi_uygulamasi(kelimeler, bolum_index):
