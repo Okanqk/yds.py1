@@ -692,139 +692,89 @@ elif menu == "🔧 Ayarlar":
 # -------------------- İSTATİSTİKLERİM SAYFASI --------------------
 elif menu == "📊 İstatistiklerim":
     st.header("📊 İstatistiklerim")
-    
-    # İstatistik verilerini yükle
-    try:
-        with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
-            istatistik_verileri = json.load(f)
-    except:
-        istatistik_verileri = []
-        st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
-    
-    if not istatistik_verileri:
-        st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
-    else:
-        # TEMEL METRİKLER
-        st.subheader("🏆 Genel İlerleme")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            # Toplam çalışılan gün sayısı
-            tarihler = set([veri["tarih"][:10] for veri in istatistik_verileri])
-            st.metric("📅 Çalışılan Gün", len(tarihler))
-        
-        with col2:
-            # Toplam bölüm sayısı
-            bolum_sayisi = len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"])
-            st.metric("✅ Tamamlanan Bölüm", bolum_sayisi)
-        
-        with col3:
-            # Toplam kelime sayısı
-            toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri])
-            st.metric("📚 Toplam Kelime", toplam_kelime)
-        
-        with col4:
-            # Ortalama başarı oranı
-            testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
-            if testler:
-                ortalama_basari = sum([v.get("basari_orani", 0) for v in testler]) / len(testler)
-                st.metric("📊 Başarı Oranı", f"%{ortalama_basari*100:.0f}")
-            else:
-                st.metric("📊 Başarı Oranı", "%-")
 
-# -------------------- DEEPSEEK AI ENTEGRASYONU --------------------
-def deepseek_analiz_yap(istatistik_verileri):
-    """İstatistik verilerini DeepSeek AI ile analiz eder"""
-    try:
-        # API key - şimdilik boş, sonra ekleyeceğiz
-        api_key = ""  # Buraya DeepSeek API key gelecek
-        
-        if not api_key:
-            return "🔑 Lütfen DeepSeek API key'inizi '🔧 Ayarlar' sayfasına ekleyin."
-        
-        # İstatistik verilerini hazırla
-        basit_veriler = {
-            "toplam_gun": len(set([v["tarih"][:10] for v in istatistik_verileri])),
-            "tamamlanan_bolum": len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"]),
-            "toplam_kelime": sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri]),
-            "test_basari": [],
-            "son_7_gun_aktivite": []
-        }
-        
-        # Test başarı oranlarını ekle
-        testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
-        for test in testler:
-            basit_veriler["test_basari"].append(test.get("basari_orani", 0))
-        
-        # Bu kısım şimdilik mock data döndürsün
-        # Gerçek API entegrasyonu için hazırlık
-        
-        mock_analiz = f"""
-🤖 **AI ANALİZ RAPORU**
+# İstatistik verilerini yükle
+try:
+    with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
+        istatistik_verileri = json.load(f)
+except:
+    istatistik_verileri = []
+    st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
 
-🎯 **Genel Değerlendirme:**
-Toplam {basit_veriler['toplam_gun']} gün çalışmışsın ve {basit_veriler['tamamlanan_bolum']} bölüm tamamlamışsın. {basit_veriler['toplam_kelime']} kelime öğrenmişsin - harika başlangıç! 
-
-📈 **Performans Analizi:**
-{len(testler)} test tamamlamışsın. Ortalama başarı oranın: %{sum(basit_veriler['test_basari'])/len(basit_veriler['test_basari'])*100:.0f if testler else 0}
-
-💡 **Öneriler:**
-1. Her gün en az 15 dakika çalışmaya devam et
-2. Zorlandığın kelimeleri tekrar et
-3. Testlerde yanlış yaptığın soruları gözden geçir
-
-🚀 **Motivasyon:**
-Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
-"""
-        
-        return mock_analiz
-        
-    except Exception as e:
-        return f"❌ AI analiz hatası: {str(e)}"
-        
-        # GÜNLÜK AKTİVİTE
-        st.subheader("📈 Günlük Aktivite")
-        
-        # Son 7 günlük veri
-        from datetime import datetime, timedelta
-        bugun = datetime.now().date()
-        son_7_gun = [(bugun - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
-        
-        gunluk_veriler = []
-        for gun in son_7_gun:
-            gun_verileri = [v for v in istatistik_verileri if v["tarih"][:10] == gun]
-            gunluk_veriler.append(len(gun_verileri))
-        
-        # Çizgi grafik
-        chart_data = {"Günler": son_7_gun, "Aktivite": gunluk_veriler}
-        st.line_chart(chart_data, x="Günler", y="Aktivite")
-        
-        # DETAYLI LİSTE
-        st.subheader("📋 Detaylı Kayıtlar")
-        
-        for veri in reversed(istatistik_verileri[-10:]):  # Son 10 kayıt
-            with st.expander(f"{veri['tarih']} - {veri['olay_tipi']}"):
-                if veri["olay_tipi"] == "bolum_tamamlandi":
-                    st.write(f"**Ünite:** {veri.get('unite_adi', '')}")
-                    st.write(f"**Bölüm:** {veri.get('bolum_index', '') + 1}")
-                    st.write(f"**Kelime Sayısı:** {veri.get('kelime_sayisi', 0)}")
-                elif veri["olay_tipi"] == "test_tamamlandi":
-                    st.write(f"**Doğru:** {veri.get('dogru_sayisi', 0)}")
-                    st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
-                    st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
-        
-                     # AI ANALİZ BUTONU
-st.divider()
-st.subheader("🤖 AI İle Detaylı Analiz")
-
-if st.button("🎯 AI Analiz Yap", type="primary"):
-    with st.spinner("AI verilerinizi analiz ediyor..."):
-        ai_rapor = deepseek_analiz_yap(istatistik_verileri)
-        st.success("AI analiz tamamlandı!")
-        st.markdown(ai_rapor)
+if not istatistik_verileri:
+    st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
 else:
-    st.info("👆 Yukarıdaki butona tıklayarak AI analiz yapabilirsiniz")
+    # TEMEL METRİKLER
+    st.subheader("🏆 Genel İlerleme")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        # Toplam çalışılan gün sayısı
+        tarihler = set([veri["tarih"][:10] for veri in istatistik_verileri])
+        st.metric("📅 Çalışılan Gün", len(tarihler))
+    
+    with col2:
+        # Toplam bölüm sayısı
+        bolum_sayisi = len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"])
+        st.metric("✅ Tamamlanan Bölüm", bolum_sayisi)
+    
+    with col3:
+        # Toplam kelime sayısı
+        toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri])
+        st.metric("📚 Toplam Kelime", toplam_kelime)
+    
+    with col4:
+        # Ortalama başarı oranı
+        testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
+        if testler:
+            ortalama_basari = sum([v.get("basari_orani", 0) for v in testler]) / len(testler)
+            st.metric("📊 Başarı Oranı", f"%{ortalama_basari*100:.0f}")
+        else:
+            st.metric("📊 Başarı Oranı", "%-")
+    
+    # GÜNLÜK AKTİVİTE
+    st.subheader("📈 Günlük Aktivite")
+    
+    # Son 7 günlük veri
+    from datetime import datetime, timedelta
+    bugun = datetime.now().date()
+    son_7_gun = [(bugun - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+    
+    gunluk_veriler = []
+    for gun in son_7_gun:
+        gun_verileri = [v for v in istatistik_verileri if v["tarih"][:10] == gun]
+        gunluk_veriler.append(len(gun_verileri))
+    
+    # Çizgi grafik
+    chart_data = {"Günler": son_7_gun, "Aktivite": gunluk_veriler}
+    st.line_chart(chart_data, x="Günler", y="Aktivite")
+    
+    # DETAYLI LİSTE
+    st.subheader("📋 Detaylı Kayıtlar")
+    
+    for veri in reversed(istatistik_verileri[-10:]):  # Son 10 kayıt
+        with st.expander(f"{veri['tarih']} - {veri['olay_tipi']}"):
+            if veri["olay_tipi"] == "bolum_tamamlandi":
+                st.write(f"**Ünite:** {veri.get('unite_adi', '')}")
+                st.write(f"**Bölüm:** {veri.get('bolum_index', '') + 1}")
+                st.write(f"**Kelime Sayısı:** {veri.get('kelime_sayisi', 0)}")
+            elif veri["olay_tipi"] == "test_tamamlandi":
+                st.write(f"**Doğru:** {veri.get('dogru_sayisi', 0)}")
+                st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
+                st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
+    
+    # AI ANALİZ BUTONU
+    st.divider()
+    st.subheader("🤖 AI İle Detaylı Analiz")
+    
+    if st.button("🎯 AI Analiz Yap", type="primary"):
+        with st.spinner("AI verilerinizi analiz ediyor..."):
+            ai_rapor = deepseek_analiz_yap(istatistik_verileri)
+            st.success("AI analiz tamamlandı!")
+            st.markdown(ai_rapor)
+    else:
+        st.info("👆 Yukarıdaki butona tıklayarak AI analiz yapabilirsiniz")
 
 # -------------------- İSTATİSTİK SAYFASI BİTTİ --------------------
 # -------------------- BOŞ SAYFALAR --------------------
