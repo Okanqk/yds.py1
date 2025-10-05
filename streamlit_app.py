@@ -138,6 +138,62 @@ def test_tamamlandi_kaydet(unite_adi, dogru_sayisi, yanlis_sayisi, toplam_soru):
         basari_orani=dogru_sayisi/toplam_soru if toplam_soru > 0 else 0
     )
 
+# ==================== YEDEKLEME SİSTEMİ ====================
+def zip_yedek_olustur():
+    try:
+        zip_buffer = io.BytesIO()
+        
+        dosyalar = [
+            "gemini_icerikler.json",
+            "unite_ilerleme.json",
+            "istatistik_verileri.json"
+        ]
+        
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for dosya in dosyalar:
+                if os.path.exists(dosya):
+                    zip_file.write(dosya)
+                else:
+                    zip_file.writestr(dosya, json.dumps([], ensure_ascii=False))
+            
+            yedek_bilgi = {
+                "yedek_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "dosya_sayisi": len(dosyalar),
+                "uygulama": "YDS Test Uygulaması v4.0"
+            }
+            zip_file.writestr("yedek_bilgi.json", json.dumps(yedek_bilgi, ensure_ascii=False, indent=2))
+        
+        zip_buffer.seek(0)
+        return True, zip_buffer
+        
+    except Exception as e:
+        return False, f"Yedekleme hatası: {e}"
+
+def zip_yedek_yukle(yuklu_dosya):
+    try:
+        with zipfile.ZipFile(yuklu_dosya, 'r') as zip_file:
+            dosya_listesi = zip_file.namelist()
+            
+            yuklu_dosyalar = []
+            for dosya_adi in dosya_listesi:
+                if dosya_adi.endswith('.json') and dosya_adi != 'yedek_bilgi.json':
+                    dosya_icerigi = zip_file.read(dosya_adi)
+                    
+                    with open(dosya_adi, 'wb') as f:
+                        f.write(dosya_icerigi)
+                    
+                    yuklu_dosyalar.append(dosya_adi)
+            
+            if 'yedek_bilgi.json' in dosya_listesi:
+                yedek_bilgi = json.loads(zip_file.read('yedek_bilgi.json'))
+            else:
+                yedek_bilgi = {"yedek_tarihi": "Bilinmiyor"}
+            
+            return True, yuklu_dosyalar, yedek_bilgi
+            
+    except Exception as e:
+        return False, [], {"hata": str(e)}
+
 # ==================== KELİME TESTİ FONKSİYONU ====================
 def kelime_testi_uygulamasi(kelimeler, bolum_index):
     if not kelimeler:
@@ -297,73 +353,6 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
                 st.success("🎉 Bölüm tamamlandı!")
                 st.rerun()
 
-# ==================== YEDEKLEME SİSTEMİ ====================
-def zip_yedek_olustur():
-    """Tüm verileri ZIP dosyasına sıkıştırır"""
-    try:
-        # ZIP için memory buffer
-        zip_buffer = io.BytesIO()
-        
-        # Yedeklenecek dosyalar
-        dosyalar = [
-            "gemini_icerikler.json",
-            "unite_ilerleme.json",
-            "istatistik_verileri.json"
-        ]
-        
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for dosya in dosyalar:
-                if os.path.exists(dosya):
-                    zip_file.write(dosya)
-                else:
-                    # Dosya yoksa boş JSON ekle
-                    zip_file.writestr(dosya, json.dumps([], ensure_ascii=False))
-            
-            # Yedek bilgisi ekle
-            yedek_bilgi = {
-                "yedek_tarihi": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "dosya_sayisi": len(dosyalar),
-                "uygulama": "YDS Test Uygulaması v4.0"
-            }
-            zip_file.writestr("yedek_bilgi.json", json.dumps(yedek_bilgi, ensure_ascii=False, indent=2))
-        
-        zip_buffer.seek(0)
-        return True, zip_buffer
-        
-    except Exception as e:
-        return False, f"Yedekleme hatası: {e}"
-
-def zip_yedek_yukle(yuklu_dosya):
-    """ZIP dosyasından verileri geri yükler"""
-    try:
-        with zipfile.ZipFile(yuklu_dosya, 'r') as zip_file:
-            # ZIP içindeki dosyaları listele
-            dosya_listesi = zip_file.namelist()
-            
-            # Her dosyayı çıkar ve kaydet
-            yuklu_dosyalar = []
-            for dosya_adi in dosya_listesi:
-                if dosya_adi.endswith('.json') and dosya_adi != 'yedek_bilgi.json':
-                    # Dosyayı oku
-                    dosya_icerigi = zip_file.read(dosya_adi)
-                    
-                    # Dosyaya yaz
-                    with open(dosya_adi, 'wb') as f:
-                        f.write(dosya_icerigi)
-                    
-                    yuklu_dosyalar.append(dosya_adi)
-            
-            # Yedek bilgisini oku
-            if 'yedek_bilgi.json' in dosya_listesi:
-                yedek_bilgi = json.loads(zip_file.read('yedek_bilgi.json'))
-            else:
-                yedek_bilgi = {"yedek_tarihi": "Bilinmiyor"}
-            
-            return True, yuklu_dosyalar, yedek_bilgi
-            
-    except Exception as e:
-        return False, [], {"hata": str(e)}
-
 # ==================== DEEPSEEK AI ENTEGRASYONU ====================
 def deepseek_analiz_yap(istatistik_verileri):
     try:
@@ -407,10 +396,42 @@ Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
     except Exception as e:
         return f"❌ AI analiz hatası: {str(e)}"
 
+def ai_cevap_uret(soru):
+    soru_kucuk = soru.lower()
+    
+    if "anlam" in soru_kucuk or "ne demek" in soru_kucuk:
+        return "🔍 Kelime anlamı için PassageWork bölümündeki kelime tablolarına bakabilirsin. Hangi kelimeyi öğrenmek istiyorsun?"
+    
+    elif "dilbilgisi" in soru_kucuk or "grammar" in soru_kucuk:
+        return "📖 Dilbilgisi konusunda hangi yapı hakkında yardım istiyorsun? (Örn: Present Perfect, Conditionals)"
+    
+    elif "plan" in soru_kucuk or "program" in soru_kucuk:
+        return """📅 **Önerilen Haftalık Plan:**
+- Pazartesi: 2 ünite kelime çalışması
+- Salı: Paragraf okuma + test
+- Çarşamba: Dilbilgisi + tekrar
+- Perşembe: Deneme testi
+- Cuma: Yanlış sorular tekrarı
+- Cumartesi: 3 ünite yeni kelime
+- Pazar: Genel tekrar"""
+    
+    elif "test" in soru_kucuk or "sınav" in soru_kucuk:
+        return """🎯 **Test Çözme Stratejisi:**
+1. Önce kolay soruları çöz
+2. Zor soruları işaretle, sonra dön
+3. Her şıkkı dikkatlice oku
+4. Elimine yöntemini kullan
+5. Zamanını iyi yönet"""
+    
+    elif "motivasyon" in soru_kucuk or "vazgeç" in soru_kucuk:
+        return "💪 Başarı bir yolculuktur! Her gün küçük adımlar atmaya devam et. Bugün zorlandığın kelimeler yarın en güçlü tarafın olacak! 🚀"
+    
+    else:
+        return f"🤖 '{soru}' hakkında yardımcı olmaya çalışayım. Daha spesifik sorabilir misin? Örneğin: kelime anlamları, dilbilgisi, test stratejisi, çalışma planı..."
+
 # ==================== SIDEBAR İÇİNDEKİLER VE AI ASISTAN ====================
 st.sidebar.title("📚 YDS Uygulaması")
 
-# İçindekiler bölümü
 with st.sidebar.expander("📑 İçindekiler / Kod Haritası", expanded=False):
     st.markdown("""
     **📦 Modüller:**
@@ -437,7 +458,6 @@ with st.sidebar.expander("📑 İçindekiler / Kod Haritası", expanded=False):
     - istatistik_verileri.json
     """)
 
-# AI Asistan bölümü
 with st.sidebar.expander("🤖 AI Asistan & Koç", expanded=False):
     st.write("**Soru sor, yardım al!**")
     
@@ -452,7 +472,6 @@ with st.sidebar.expander("🤖 AI Asistan & Koç", expanded=False):
     
     if st.button("Gönder", key="ai_gonder_sidebar"):
         if kullanici_sorusu:
-            # Geçici cevap (gerçek AI entegrasyonu için hazır)
             cevap = f"🤖 **AI Cevap:** '{kullanici_sorusu}' sorunuz için detaylı yardım almak ister misin? '🤖 AI Asistan' sayfasına git!"
             st.session_state.chat_history.append({
                 "soru": kullanici_sorusu,
@@ -460,7 +479,6 @@ with st.sidebar.expander("🤖 AI Asistan & Koç", expanded=False):
             })
             st.info(cevap)
     
-    # Son 3 sohbet
     if st.session_state.chat_history:
         st.write("**Son sorular:**")
         for i, chat in enumerate(reversed(st.session_state.chat_history[-3:])):
@@ -678,6 +696,85 @@ elif menu == "📊 İstatistiklerim":
                 st.success("AI analiz tamamlandı!")
                 st.markdown(ai_rapor)
 
+# ==================== AI ASISTAN SAYFASI ====================
+elif menu == "🤖 AI Asistan":
+    st.header("🤖 AI Asistan & Kişisel Koç")
+    
+    st.info("""
+    💡 **AI Asistanın şunlarda yardımcı olabilir:**
+    - Kelime anlamları ve kullanımları
+    - Dilbilgisi kuralları
+    - Test stratejileri
+    - Çalışma planı önerileri
+    - Motivasyon ve hedef belirleme
+    """)
+    
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
+    
+    st.subheader("💬 Sohbet")
+    
+    for chat in st.session_state.chat_history:
+        with st.chat_message("user"):
+            st.write(chat["soru"])
+        with st.chat_message("assistant"):
+            st.write(chat["cevap"])
+    
+    kullanici_mesaji = st.chat_input("Sorunuzu yazın...")
+    
+    if kullanici_mesaji:
+        with st.chat_message("user"):
+            st.write(kullanici_mesaji)
+        
+        with st.chat_message("assistant"):
+            with st.spinner("Düşünüyorum..."):
+                cevap = ai_cevap_uret(kullanici_mesaji)
+                st.write(cevap)
+        
+        st.session_state.chat_history.append({
+            "soru": kullanici_mesaji,
+            "cevap": cevap
+        })
+    
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🗑️ Sohbeti Temizle"):
+            st.session_state.chat_history = []
+            st.rerun()
+    
+    st.divider()
+    
+    st.subheader("⚡ Hızlı Sorular")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        if st.button("📚 Bugün ne çalışmalıyım?"):
+            cevap = "Öncelikle tamamlamadığın ünitelere bakmanı öneririm. Sonra kelime testlerini tekrarla!"
+            st.info(cevap)
+            st.session_state.chat_history.append({
+                "soru": "Bugün ne çalışmalıyım?",
+                "cevap": cevap
+            })
+    
+    with col2:
+        if st.button("🎯 Hedef belirleme"):
+            cevap = "Haftalık hedef: 50 yeni kelime, 3 ünite tamamla, 2 deneme testi çöz!"
+            st.info(cevap)
+            st.session_state.chat_history.append({
+                "soru": "Hedef belirleme",
+                "cevap": cevap
+            })
+    
+    with col3:
+        if st.button("💪 Motivasyon"):
+            cevap = "Her gün küçük adımlar büyük başarılar yaratır! Bugün 15 dakika çalış, yarın daha iyisini yap! 🚀"
+            st.success(cevap)
+            st.session_state.chat_history.append({
+                "soru": "Motivasyon",
+                "cevap": cevap
+            })
+
 # ==================== İÇERİK EKLE ====================
 elif menu == "➕ İçerik Ekle":
     st.header("➕ İçerik Ekle")
@@ -718,6 +815,7 @@ elif menu == "➕ İçerik Ekle":
 # ==================== AYARLAR ====================
 elif menu == "🔧 Ayarlar":
     st.header("🔧 Ayarlar")
+    
     st.subheader("🤖 DeepSeek API Ayarları")
     
     if 'deepseek_api_key' not in st.session_state:
@@ -744,162 +842,131 @@ elif menu == "🔧 Ayarlar":
     
     st.divider()
     
-    st.subheader("💾 Veri Yönetimi")
+    st.subheader("💾 Yedekleme Sistemi")
     
-    if st.button("📦 Yedek Oluştur"):
-        try:
-            with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
-                icerikler = json.load(f)
-            
-            yedek_adi = f"yds_yedek_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(yedek_adi, "w", encoding="utf-8") as f:
-                json.dump(icerikler, f, ensure_ascii=False, indent=2)
-            
-            st.success(f"✅ Yedek oluşturuldu: {yedek_adi}")
-            
-        except Exception as e:
-            st.error(f"❌ Yedekleme hatası: {e}")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**📦 Yedek Oluştur**")
+        st.caption("Tüm verilerinizi ZIP olarak indir")
+        
+        if st.button("💾 Yedek İndir", type="primary", use_container_width=True):
+            with st.spinner("Yedek oluşturuluyor..."):
+                success, result = zip_yedek_olustur()
+                
+                if success:
+                    tarih = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    dosya_adi = f"yds_yedek_{tarih}.zip"
+                    
+                    st.download_button(
+                        label="⬇️ ZIP Dosyasını İndir",
+                        data=result,
+                        file_name=dosya_adi,
+                        mime="application/zip",
+                        use_container_width=True
+                    )
+                    
+                    st.success("✅ Yedek hazır! İndir butonuna tıkla")
+                else:
+                    st.error(f"❌ {result}")
+    
+    with col2:
+        st.write("**📂 Yedek Yükle**")
+        st.caption("Önceki verilerinizi geri getir")
+        
+        yuklu_zip = st.file_uploader(
+            "ZIP dosyasını seç:",
+            type=['zip'],
+            key="zip_yukle"
+        )
+        
+        if yuklu_zip is not None:
+            if st.button("📥 Yedek Geri Yükle", type="secondary", use_container_width=True):
+                with st.spinner("Yedek yükleniyor..."):
+                    success, yuklu_dosyalar, yedek_bilgi = zip_yedek_yukle(yuklu_zip)
+                    
+                    if success:
+                        st.success("✅ Yedek başarıyla yüklendi!")
+                        st.balloons()
+                        
+                        st.write(f"**Yedek Tarihi:** {yedek_bilgi.get('yedek_tarihi', 'Bilinmiyor')}")
+                        st.write(f"**Yüklenen Dosyalar:** {', '.join(yuklu_dosyalar)}")
+                        
+                        st.info("🔄 Sayfa yenileniyor...")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Yükleme hatası: {yedek_bilgi.get('hata', 'Bilinmeyen hata')}")
+    
+    st.divider()
+    
+    with st.expander("📋 Eski Yedekleme (Sadece JSON)", expanded=False):
+        if st.button("📄 JSON Yedek Oluştur"):
+            try:
+                with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
+                    icerikler = json.load(f)
+                
+                yedek_adi = f"yds_yedek_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+                with open(yedek_adi, "w", encoding="utf-8") as f:
+                    json.dump(icerikler, f, ensure_ascii=False, indent=2)
+                
+                st.success(f"✅ JSON yedek oluşturuldu: {yedek_adi}")
+                
+            except Exception as e:
+                st.error(f"❌ Yedekleme hatası: {e}")
     
     st.divider()
     
     st.subheader("🐛 Debug - Dosya İçeriği")
-    try:
-        with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
-            icerikler = json.load(f)
-        st.write(f"**Dosyadaki içerik sayısı:** {len(icerikler)}")
-        st.json(icerikler)
-    except Exception as e:
-        st.error(f"❌ Dosya okunamadı: {e}")
-
-# ==================== AI ASISTAN SAYFASI ====================
-elif menu == "🤖 AI Asistan":
-    st.header("🤖 AI Asistan & Kişisel Koç")
     
-    st.info("""
-    💡 **AI Asistanın şunlarda yardımcı olabilir:**
-    - Kelime anlamları ve kullanımları
-    - Dilbilgisi kuralları
-    - Test stratejileri
-    - Çalışma planı önerileri
-    - Motivasyon ve hedef belirleme
-    """)
+    tab1, tab2, tab3 = st.tabs(["📚 İçerikler", "📊 İlerleme", "📈 İstatistikler"])
     
-    # Chat geçmişi için session state
-    if 'chat_history' not in st.session_state:
-        st.session_state.chat_history = []
+    with tab1:
+        try:
+            with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
+                icerikler = json.load(f)
+            st.write(f"**Dosyadaki içerik sayısı:** {len(icerikler)}")
+            st.json(icerikler)
+        except Exception as e:
+            st.error(f"❌ Dosya okunamadı: {e}")
     
-    # Sohbet alanı
-    st.subheader("💬 Sohbet")
+    with tab2:
+        try:
+            with open("unite_ilerleme.json", "r", encoding="utf-8") as f:
+                ilerleme = json.load(f)
+            st.write(f"**Ünite sayısı:** {len(ilerleme)}")
+            st.json(ilerleme)
+        except Exception as e:
+            st.warning("ℹ️ Henüz ilerleme kaydı yok")
     
-    # Önceki sohbetleri göster
-    for chat in st.session_state.chat_history:
-        with st.chat_message("user"):
-            st.write(chat["soru"])
-        with st.chat_message("assistant"):
-            st.write(chat["cevap"])
-    
-    # Yeni mesaj girişi
-    kullanici_mesaji = st.chat_input("Sorunuzu yazın...")
-    
-    if kullanici_mesaji:
-        # Kullanıcı mesajını göster
-        with st.chat_message("user"):
-            st.write(kullanici_mesaji)
-        
-        # AI cevabı üret (şimdilik basit)
-        with st.chat_message("assistant"):
-            with st.spinner("Düşünüyorum..."):
-                # Basit yanıt sistemi (DeepSeek API ile değiştirilebilir)
-                cevap = ai_cevap_uret(kullanici_mesaji)
-                st.write(cevap)
-        
-        # Geçmişe ekle
-        st.session_state.chat_history.append({
-            "soru": kullanici_mesaji,
-            "cevap": cevap
-        })
-    
-    # Sohbet temizleme
-    col1, col2 = st.columns([3, 1])
-    with col2:
-        if st.button("🗑️ Sohbeti Temizle"):
-            st.session_state.chat_history = []
-            st.rerun()
+    with tab3:
+        try:
+            with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
+                istatistikler = json.load(f)
+            st.write(f"**Kayıt sayısı:** {len(istatistikler)}")
+            st.json(istatistikler[-10:])
+        except Exception as e:
+            st.warning("ℹ️ Henüz istatistik verisi yok")
     
     st.divider()
     
-    # Hızlı sorular
-    st.subheader("⚡ Hızlı Sorular")
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        if st.button("📚 Bugün ne çalışmalıyım?"):
-            cevap = "Öncelikle tamamlamadığın ünitelere bakmanı öneririm. Sonra kelime testlerini tekrarla!"
-            st.info(cevap)
-            st.session_state.chat_history.append({
-                "soru": "Bugün ne çalışmalıyım?",
-                "cevap": cevap
-            })
-    
-    with col2:
-        if st.button("🎯 Hedef belirleme"):
-            cevap = "Haftalık hedef: 50 yeni kelime, 3 ünite tamamla, 2 deneme testi çöz!"
-            st.info(cevap)
-            st.session_state.chat_history.append({
-                "soru": "Hedef belirleme",
-                "cevap": cevap
-            })
-    
-    with col3:
-        if st.button("💪 Motivasyon"):
-            cevap = "Her gün küçük adımlar büyük başarılar yaratır! Bugün 15 dakika çalış, yarın daha iyisini yap! 🚀"
-            st.success(cevap)
-            st.session_state.chat_history.append({
-                "soru": "Motivasyon",
-                "cevap": cevap
-            })
-
-def ai_cevap_uret(soru):
-    """Basit AI cevap üretici (DeepSeek API ile değiştirilebilir)"""
-    
-    soru_kucuk = soru.lower()
-    
-    # Kelime soruları
-    if "anlam" in soru_kucuk or "ne demek" in soru_kucuk:
-        return "🔍 Kelime anlamı için PassageWork bölümündeki kelime tablolarına bakabilirsin. Hangi kelimeyi öğrenmek istiyorsun?"
-    
-    # Dilbilgisi soruları
-    elif "dilbilgisi" in soru_kucuk or "grammar" in soru_kucuk:
-        return "📖 Dilbilgisi konusunda hangi yapı hakkında yardım istiyorsun? (Örn: Present Perfect, Conditionals)"
-    
-    # Çalışma planı
-    elif "plan" in soru_kucuk or "program" in soru_kucuk:
-        return """📅 **Önerilen Haftalık Plan:**
-        - Pazartesi: 2 ünite kelime çalışması
-        - Salı: Paragraf okuma + test
-        - Çarşamba: Dilbilgisi + tekrar
-        - Perşembe: Deneme testi
-        - Cuma: Yanlış sorular tekrarı
-        - Cumartesi: 3 ünite yeni kelime
-        - Pazar: Genel tekrar"""
-    
-    # Test stratejisi
-    elif "test" in soru_kucuk or "sınav" in soru_kucuk:
-        return """🎯 **Test Çözme Stratejisi:**
-        1. Önce kolay soruları çöz
-        2. Zor soruları işaretle, sonra dön
-        3. Her şıkkı dikkatlice oku
-        4. Elimine yöntemini kullan
-        5. Zamanını iyi yönet"""
-    
-    # Motivasyon
-    elif "motivasyon" in soru_kucuk or "vazgeç" in soru_kucuk:
-        return "💪 Başarı bir yolculuktur! Her gün küçük adımlar atmaya devam et. Bugün zorlandığın kelimeler yarın en güçlü tarafın olacak! 🚀"
-    
-    # Genel
-    else:
-        return f"🤖 '{soru}' hakkında yardımcı olmaya çalışayım. Daha spesifik sorabilir misin? Örneğin: kelime anlamları, dilbilgisi, test stratejisi, çalışma planı..."
+    st.subheader("⚠️ Tehlikeli Alan")
+    with st.expander("🗑️ Tüm Verileri Sil", expanded=False):
+        st.warning("⚠️ DİKKAT: Bu işlem geri alınamaz!")
+        
+        onay = st.checkbox("Tüm verileri silmek istediğimi onaylıyorum")
+        
+        if onay:
+            if st.button("🗑️ TÜM VERİLERİ SİL", type="secondary"):
+                try:
+                    dosyalar = ["gemini_icerikler.json", "unite_ilerleme.json", "istatistik_verileri.json"]
+                    for dosya in dosyalar:
+                        if os.path.exists(dosya):
+                            os.remove(dosya)
+                    st.success("✅ Tüm veriler silindi!")
+                    st.info("🔄 Sayfa yenileniyor...")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Silme hatası: {e}")
 
 # ==================== BOŞ SAYFALAR ====================
 elif menu == "🎯 YDS Çalışma Soruları":
