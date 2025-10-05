@@ -353,6 +353,187 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
                 st.success("🎉 Bölüm tamamlandı!")
                 st.rerun()
 
+# ==================== AI İÇİN VERİ TOPLAMA ====================
+def ai_icin_uygulama_verilerini_getir():
+    """AI'ya verilecek uygulama durumu özeti"""
+    try:
+        # İçerikleri yükle
+        try:
+            with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
+                icerikler = json.load(f)
+            unite_sayisi = len([i for i in icerikler if i.get("icerik_tipi") == "unite"])
+        except:
+            unite_sayisi = 0
+        
+        # İlerlemeyi yükle
+        try:
+            with open("unite_ilerleme.json", "r", encoding="utf-8") as f:
+                ilerleme = json.load(f)
+            tamamlanan_unite_sayisi = len(ilerleme)
+        except:
+            tamamlanan_unite_sayisi = 0
+        
+        # İstatistikleri yükle
+        try:
+            with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
+                istatistikler = json.load(f)
+            
+            toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistikler])
+            toplam_bolum = len([v for v in istatistikler if v["olay_tipi"] == "bolum_tamamlandi"])
+            testler = [v for v in istatistikler if v["olay_tipi"] == "test_tamamlandi"]
+            basari_orani = sum([t.get("basari_orani", 0) for t in testler]) / len(testler) if testler else 0
+            calisilan_gun_sayisi = len(set([v["tarih"][:10] for v in istatistikler]))
+        except:
+            toplam_kelime = 0
+            toplam_bolum = 0
+            basari_orani = 0
+            calisilan_gun_sayisi = 0
+        
+        veri_ozeti = {
+            "unite_sayisi": unite_sayisi,
+            "tamamlanan_unite": tamamlanan_unite_sayisi,
+            "toplam_kelime": toplam_kelime,
+            "tamamlanan_bolum": toplam_bolum,
+            "test_basari_orani": basari_orani,
+            "calisilan_gun": calisilan_gun_sayisi
+        }
+        
+        return veri_ozeti
+    except Exception as e:
+        return None
+
+def ai_cevap_uret(soru, uygulama_verileri=None):
+    """Geliştirilmiş AI cevap üretici - Uygulama verilerine göre cevap verir"""
+    
+    soru_kucuk = soru.lower()
+    
+    # Veri analizi yap
+    if uygulama_verileri:
+        v = uygulama_verileri
+        veri_var = v["toplam_kelime"] > 0 or v["tamamlanan_bolum"] > 0
+    else:
+        veri_var = False
+    
+    # Kelime sayısı soruları
+    if "kaç kelime" in soru_kucuk or "günde" in soru_kucuk and "kelime" in soru_kucuk:
+        cevap = "**📊 Kısa Cevap:** Günde 10-15 kelime verimli bir şekilde öğrenilebilir.\n\n"
+        
+        if veri_var and v["toplam_kelime"] > 0:
+            gunluk_ort = v["toplam_kelime"] / v["calisilan_gun"] if v["calisilan_gun"] > 0 else 0
+            cevap += f"**💡 Senin Durumun:** Şu ana kadar {v['toplam_kelime']} kelime öğrenmişsin. "
+            cevap += f"Günlük ortalaman: {gunluk_ort:.1f} kelime.\n\n"
+        
+        cevap += """**📚 Detaylı Açıklama:**
+Araştırmalara göre insan beyni günde 10-15 yeni kelimeyi verimli şekilde işleyebilir ve kalıcı hafızaya atabilir. Daha fazla kelime çalışmak geçici hafızada kalır ve unutulma riski yüksektir.
+
+**🎯 Uygulaman İçin Öneriler:**
+- Her ünitede ortalama 10-15 kelime var
+- Günde 1 ünite = ideal tempo
+- Testlerle tekrar yap
+- 3 gün sonra aynı kelimeleri tekrar et
+
+Bu şekilde 1 ayda 300-450 kelime kalıcı olarak öğrenebilirsin! 🚀"""
+        
+        return cevap
+    
+    # Çalışma planı soruları
+    elif "plan" in soru_kucuk or "program" in soru_kucuk or "nasıl çalış" in soru_kucuk:
+        cevap = "**📊 Kısa Cevap:** Haftalık düzenli program ile çalış.\n\n"
+        
+        if veri_var:
+            cevap += f"**💡 Senin Durumun:** {v['unite_sayisi']} ünite var, {v['tamamlanan_unite']} tanesini bitirmişsin. "
+            kalan = v['unite_sayisi'] - v['tamamlanan_unite']
+            cevap += f"{kalan} ünite kaldı.\n\n"
+        
+        cevap += """**📅 Haftalık Çalışma Planı:**
+- **Pazartesi:** 2 ünite kelime çalışması + kelime testi
+- **Salı:** Paragraf okuma + yeni kelimeler
+- **Çarşamba:** Dilbilgisi analizi + tekrar
+- **Perşembe:** Test çözme günü
+- **Cuma:** Yanlış soruları tekrar et
+- **Cumartesi:** 3 ünite yeni kelime
+- **Pazar:** Genel tekrar + zayıf noktalar
+
+**⏰ Günlük Süre:** 20-30 dakika yeterli!"""
+        
+        return cevap
+    
+    # İlerleme/durum soruları
+    elif "ne kadar" in soru_kucuk or "ilerleme" in soru_kucuk or "durum" in soru_kucuk:
+        if not veri_var:
+            return "**📊 Kısa Cevap:** Henüz çalışmaya başlamamışsın.\n\nİlk üniteyi tamamla, sonra ilerlemeni görebiliriz! 'PassageWork Çalışma' sayfasından başla. 🚀"
+        
+        cevap = f"**📊 Kısa Cevap:** {v['tamamlanan_bolum']} bölüm tamamlamışsın, {v['toplam_kelime']} kelime öğrenmişsin.\n\n"
+        cevap += f"""**💡 Detaylı Durum Analizi:**
+- **Çalışılan Gün:** {v['calisilan_gun']} gün
+- **Ünite İlerlemesi:** {v['tamamlanan_unite']}/{v['unite_sayisi']} ünite
+- **Tamamlanan Bölüm:** {v['tamamlanan_bolum']} bölüm
+- **Öğrenilen Kelime:** {v['toplam_kelime']} kelime
+- **Test Başarısı:** %{v['test_basari_orani']*100:.0f}
+
+**🎯 Değerlendirme:**
+{'Harika gidiyorsun! Bu tempoyu koru! 🔥' if v['calisilan_gun'] >= 7 else 'Düzenli çalışırsan daha iyi olur! Her gün 15 dakika yeterli.'}"""
+        
+        return cevap
+    
+    # Kelime anlamı soruları
+    elif "anlam" in soru_kucuk or "ne demek" in soru_kucuk:
+        return "**📊 Kısa Cevap:** PassageWork bölümündeki kelime tablolarına bak.\n\n**💡 Detay:** Hangi kelimeyi öğrenmek istiyorsun? Kelime adını söyle, sana anlamını, eş anlamlılarını ve örnek cümleyi göstereyim!"
+    
+    # Dilbilgisi soruları
+    elif "dilbilgisi" in soru_kucuk or "grammar" in soru_kucuk:
+        return "**📊 Kısa Cevap:** Dilbilgisi analizi bölümünde çalış.\n\n**💡 Detay:** Hangi konuda yardım istiyorsun? (Örnek: Present Perfect, Passive Voice, Conditionals). Ünitelerinde bu konular var!"
+    
+    # Test stratejisi
+    elif "test" in soru_kucuk or "sınav" in soru_kucuk or "strateji" in soru_kucuk:
+        cevap = "**📊 Kısa Cevap:** Kolay sorulardan başla, zor soruları sona bırak.\n\n"
+        
+        if veri_var and v["test_basari_orani"] > 0:
+            cevap += f"**💡 Senin Durumun:** Test başarı oranın %{v['test_basari_orani']*100:.0f}. "
+            cevap += "İyi gidiyorsun!\n\n" if v["test_basari_orani"] > 0.7 else "Biraz daha çalışmalısın.\n\n"
+        
+        cevap += """**🎯 Test Çözme Stratejisi:**
+1. **İlk Tur:** Kolay soruları çöz (2-3 saniyede bildiğin)
+2. **İkinci Tur:** Orta zorlukta soruları çöz
+3. **Son Tur:** Zor soruları dön
+4. **Elimine Et:** Kesin yanlış şıkları çiz
+5. **Zaman Yönet:** Her soru için max 45 saniye
+
+**💡 Uygulamada:** Kelime testlerini düzenli çöz, yanlış yaptıklarını not al!"""
+        
+        return cevap
+    
+    # Motivasyon
+    elif "motivasyon" in soru_kucuk or "vazgeç" in soru_kucuk or "yorgun" in soru_kucuk:
+        if veri_var:
+            return f"""**📊 Kısa Cevap:** Başarı bir yolculuk! Sen zaten {v['calisilan_gun']} gündür çalışıyorsun! 💪
+
+**💡 Bak Ne Kadar Yol Aldın:**
+- {v['toplam_kelime']} kelime öğrenmişsin
+- {v['tamamlanan_bolum']} bölüm tamamlamışsın
+- Bu küçük adımlar seni hedefe götürüyor!
+
+**🚀 Motivasyon:**
+Her gün 15 dakika = Ayda 450 dakika = 7.5 saat çalışma!
+Vazgeçme, hedefe çok yakınsın! Bugün sadece 1 ünite daha çalış! 🔥"""
+        else:
+            return "**📊 Kısa Cevap:** Her yolculuk bir adımla başlar!\n\n**💡 İlk Adım:** Bugün sadece 1 ünite tamamla. 15 dakika yeterli. Yarın kendini daha güçlü hissedeceksin! 🚀"
+    
+    # Genel sorular
+    else:
+        return f"""**🤖 AI Asistan:**
+'{soru}' hakkında yardımcı olmaya çalışayım!
+
+**💡 Sana Yardımcı Olabileceğim Konular:**
+- 📚 Günlük kaç kelime çalışmalıyım?
+- 📅 Nasıl bir program izlemeliyim?
+- 📊 İlerlemem nasıl?
+- 🎯 Test stratejisi nedir?
+- 💪 Motivasyon lazım!
+- 📖 Kelime anlamları ve dilbilgisi
+
+Daha spesifik bir soru sorabilir misin?"""
+
 # ==================== DEEPSEEK AI ENTEGRASYONU ====================
 def deepseek_analiz_yap(istatistik_verileri):
     try:
@@ -395,39 +576,6 @@ Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
         
     except Exception as e:
         return f"❌ AI analiz hatası: {str(e)}"
-
-def ai_cevap_uret(soru):
-    soru_kucuk = soru.lower()
-    
-    if "anlam" in soru_kucuk or "ne demek" in soru_kucuk:
-        return "🔍 Kelime anlamı için PassageWork bölümündeki kelime tablolarına bakabilirsin. Hangi kelimeyi öğrenmek istiyorsun?"
-    
-    elif "dilbilgisi" in soru_kucuk or "grammar" in soru_kucuk:
-        return "📖 Dilbilgisi konusunda hangi yapı hakkında yardım istiyorsun? (Örn: Present Perfect, Conditionals)"
-    
-    elif "plan" in soru_kucuk or "program" in soru_kucuk:
-        return """📅 **Önerilen Haftalık Plan:**
-- Pazartesi: 2 ünite kelime çalışması
-- Salı: Paragraf okuma + test
-- Çarşamba: Dilbilgisi + tekrar
-- Perşembe: Deneme testi
-- Cuma: Yanlış sorular tekrarı
-- Cumartesi: 3 ünite yeni kelime
-- Pazar: Genel tekrar"""
-    
-    elif "test" in soru_kucuk or "sınav" in soru_kucuk:
-        return """🎯 **Test Çözme Stratejisi:**
-1. Önce kolay soruları çöz
-2. Zor soruları işaretle, sonra dön
-3. Her şıkkı dikkatlice oku
-4. Elimine yöntemini kullan
-5. Zamanını iyi yönet"""
-    
-    elif "motivasyon" in soru_kucuk or "vazgeç" in soru_kucuk:
-        return "💪 Başarı bir yolculuktur! Her gün küçük adımlar atmaya devam et. Bugün zorlandığın kelimeler yarın en güçlü tarafın olacak! 🚀"
-    
-    else:
-        return f"🤖 '{soru}' hakkında yardımcı olmaya çalışayım. Daha spesifik sorabilir misin? Örneğin: kelime anlamları, dilbilgisi, test stratejisi, çalışma planı..."
 
 # ==================== SIDEBAR İÇİNDEKİLER VE AI ASISTAN ====================
 st.sidebar.title("📚 YDS Uygulaması")
@@ -707,35 +855,56 @@ elif menu == "🤖 AI Asistan":
     - Test stratejileri
     - Çalışma planı önerileri
     - Motivasyon ve hedef belirleme
+    
+    **🎯 AI senin verilerini otomatik analiz ederek kişisel öneriler verir!**
     """)
     
     if 'chat_history' not in st.session_state:
         st.session_state.chat_history = []
     
-    st.subheader("💬 Sohbet")
+    st.subheader("💬 Sohbet Geçmişi")
     
-    for chat in st.session_state.chat_history:
-        with st.chat_message("user"):
-            st.write(chat["soru"])
-        with st.chat_message("assistant"):
-            st.write(chat["cevap"])
+    # Sohbet geçmişini kaydırılabilir container'da göster
+    chat_container = st.container()
     
-    kullanici_mesaji = st.chat_input("Sorunuzu yazın...")
+    with chat_container:
+        if not st.session_state.chat_history:
+            st.info("👋 Merhaba! Sana nasıl yardımcı olabilirim? Aşağıdaki hızlı sorulardan birini seçebilir ya da kendi sorunuzu yazabilirsin!")
+        else:
+            for chat in st.session_state.chat_history:
+                with st.chat_message("user"):
+                    st.write(chat["soru"])
+                with st.chat_message("assistant"):
+                    st.markdown(chat["cevap"])
+    
+    # Yeni mesaj girişi
+    kullanici_mesaji = st.chat_input("Sorunuzu yazın... (Örn: Günde kaç kelime çalışmalıyım?)")
     
     if kullanici_mesaji:
-        with st.chat_message("user"):
-            st.write(kullanici_mesaji)
+        # Uygulama verilerini topla
+        uygulama_verileri = ai_icin_uygulama_verilerini_getir()
         
-        with st.chat_message("assistant"):
-            with st.spinner("Düşünüyorum..."):
-                cevap = ai_cevap_uret(kullanici_mesaji)
-                st.write(cevap)
+        # Kullanıcı mesajını göster
+        with chat_container:
+            with st.chat_message("user"):
+                st.write(kullanici_mesaji)
+            
+            # AI cevabı üret
+            with st.chat_message("assistant"):
+                with st.spinner("Verilerinizi analiz ediyorum..."):
+                    cevap = ai_cevap_uret(kullanici_mesaji, uygulama_verileri)
+                    st.markdown(cevap)
         
+        # Geçmişe ekle
         st.session_state.chat_history.append({
             "soru": kullanici_mesaji,
             "cevap": cevap
         })
+        st.rerun()
     
+    st.divider()
+    
+    # Sohbet kontrolü
     col1, col2 = st.columns([3, 1])
     with col2:
         if st.button("🗑️ Sohbeti Temizle"):
@@ -744,28 +913,57 @@ elif menu == "🤖 AI Asistan":
     
     st.divider()
     
+    # Hızlı sorular
     st.subheader("⚡ Hızlı Sorular")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        if st.button("📚 Bugün ne çalışmalıyım?"):
-            cevap = "Öncelikle tamamlamadığın ünitelere bakmanı öneririm. Sonra kelime testlerini tekrarla!"
-            st.info(cevap)
-            st.session_state.chat_history.append({
-                "soru": "Bugün ne çalışmalıyım?",
-                "cevap": cevap
-            })
+        if st.button("📚 Günde kaç kelime?", use_container_width=True):
+            uygulama_verileri = ai_icin_uygulama_verilerini_getir()
+            soru = "Günde kaç kelime öğrenmeliyim?"
+            cevap = ai_cevap_uret(soru, uygulama_verileri)
+            st.session_state.chat_history.append({"soru": soru, "cevap": cevap})
+            st.rerun()
     
     with col2:
-        if st.button("🎯 Hedef belirleme"):
-            cevap = "Haftalık hedef: 50 yeni kelime, 3 ünite tamamla, 2 deneme testi çöz!"
-            st.info(cevap)
-            st.session_state.chat_history.append({
-                "soru": "Hedef belirleme",
-                "cevap": cevap
-            })
+        if st.button("📅 Çalışma planı", use_container_width=True):
+            uygulama_verileri = ai_icin_uygulama_verilerini_getir()
+            soru = "Nasıl bir çalışma programı izlemeliyim?"
+            cevap = ai_cevap_uret(soru, uygulama_verileri)
+            st.session_state.chat_history.append({"soru": soru, "cevap": cevap})
+            st.rerun()
     
+    with col3:
+        if st.button("📊 İlerlemem nasıl?", use_container_width=True):
+            uygulama_verileri = ai_icin_uygulama_verilerini_getir()
+            soru = "İlerlemem nasıl gidiyor?"
+            cevap = ai_cevap_uret(soru, uygulama_verileri)
+            st.session_state.chat_history.append({"soru": soru, "cevap": cevap})
+            st.rerun()
+    
+    with col4:
+        if st.button("💪 Motivasyon!", use_container_width=True):
+            uygulama_verileri = ai_icin_uygulama_verilerini_getir()
+            soru = "Motivasyon lazım!"
+            cevap = ai_cevap_uret(soru, uygulama_verileri)
+            st.session_state.chat_history.append({"soru": soru, "cevap": cevap})
+            st.rerun()
+    
+    # Örnek sorular listesi
+    with st.expander("💡 Daha Fazla Örnek Soru", expanded=False):
+        st.markdown("""
+        **Sorular:**
+        - "Günde kaç kelime öğrenmeliyim?"
+        - "Test stratejim nasıl olmalı?"
+        - "Bu hafta neye odaklanmalıyım?"
+        - "Kelime ezberlemek için en iyi yöntem nedir?"
+        - "Dilbilgisi mi kelime mi önce çalışmalıyım?"
+        - "Ne zaman test çözmeliyim?"
+        - "Yanlış yaptığım soruları nasıl tekrar edeyim?"
+        """)
+
+# ==================== İÇERİK EKLE ====================
     with col3:
         if st.button("💪 Motivasyon"):
             cevap = "Her gün küçük adımlar büyük başarılar yaratır! Bugün 15 dakika çalış, yarın daha iyisini yap! 🚀"
