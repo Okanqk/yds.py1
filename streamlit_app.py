@@ -972,8 +972,6 @@ elif menu == "🤖 AI Asistan":
                 "soru": "Motivasyon",
                 "cevap": cevap
             })
-
-# ==================== İÇERİK EKLE ====================
 elif menu == "➕ İçerik Ekle":
     st.header("➕ İçerik Ekle")
     
