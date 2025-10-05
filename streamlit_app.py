@@ -1,13 +1,14 @@
-# -------------------- YDS TEST UYGULAMASI - TAM KOD --------------------
+# ==================== YDS TEST UYGULAMASI - TAM KOD ====================
 import streamlit as st
 import json
 import os
 from datetime import datetime
+import random
 
 st.set_page_config(page_title="YDS Test Uygulaması", page_icon="📄", layout="wide")
 st.title("📄 YDS Test Uygulaması v4.0")
 
-# -------------------- GEMINI JSON İŞLEYİCİ MODÜLÜ --------------------
+# ==================== GEMINI JSON İŞLEYİCİ MODÜLÜ ====================
 def gemini_json_isleyici(gelen_veri):
     try:
         if isinstance(gelen_veri, str):
@@ -49,9 +50,9 @@ def icerik_dosyasina_kaydet(veri, dosya_adi="gemini_icerikler.json"):
         
     except Exception as e:
         return False, f"❌ Kaydetme hatası: {e}"
-        # -------------------- ÜNİTE SİSTEMİ FONKSİYONLARI --------------------
+
+# ==================== ÜNİTE SİSTEMİ FONKSİYONLARI ====================
 def unite_ilerleme_kaydet(unite_id, bolum_index, tamamlandi=True):
-    """Ünite ilerlemesini kaydeder"""
     try:
         ilerleme_dosyasi = "unite_ilerleme.json"
         
@@ -78,7 +79,6 @@ def unite_ilerleme_kaydet(unite_id, bolum_index, tamamlandi=True):
         return False
 
 def unite_ilerleme_getir(unite_id):
-    """Ünite ilerlemesini getirir"""
     try:
         ilerleme_dosyasi = "unite_ilerleme.json"
         
@@ -91,8 +91,136 @@ def unite_ilerleme_getir(unite_id):
     except:
         return {"tamamlanan_bolumler": [], "son_bolum": 0}
 
+# ==================== İSTATİSTİK VERİ TOPLAMA SİSTEMİ ====================
+def istatistik_veri_kaydet(olay_tipi, **kwargs):
+    try:
+        istatistik_dosyasi = "istatistik_verileri.json"
+        
+        if os.path.exists(istatistik_dosyasi):
+            with open(istatistik_dosyasi, "r", encoding="utf-8") as f:
+                veriler = json.load(f)
+        else:
+            veriler = []
+        
+        yeni_kayit = {
+            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "olay_tipi": olay_tipi,
+            **kwargs
+        }
+        
+        veriler.append(yeni_kayit)
+        
+        with open(istatistik_dosyasi, "w", encoding="utf-8") as f:
+            json.dump(veriler, f, ensure_ascii=False, indent=2)
+            
+        return True
+    except Exception as e:
+        print(f"İstatistik kayıt hatası: {e}")
+        return False
+
+def bolum_tamamlandi_kaydet(unite_adi, bolum_index, kelime_sayisi):
+    return istatistik_veri_kaydet(
+        olay_tipi="bolum_tamamlandi",
+        unite_adi=unite_adi,
+        bolum_index=bolum_index,
+        kelime_sayisi=kelime_sayisi
+    )
+
+def test_tamamlandi_kaydet(unite_adi, dogru_sayisi, yanlis_sayisi, toplam_soru):
+    return istatistik_veri_kaydet(
+        olay_tipi="test_tamamlandi",
+        unite_adi=unite_adi,
+        dogru_sayisi=dogru_sayisi,
+        yanlis_sayisi=yanlis_sayisi,
+        toplam_soru=toplam_soru,
+        basari_orani=dogru_sayisi/toplam_soru if toplam_soru > 0 else 0
+    )
+
+# ==================== KELİME TESTİ FONKSİYONU ====================
+def kelime_testi_uygulamasi(kelimeler, bolum_index):
+    if not kelimeler:
+        st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
+        return
+    
+    if f'test_durum_{bolum_index}' not in st.session_state:
+        st.session_state[f'test_durum_{bolum_index}'] = {
+            'cevaplar': {},
+            'goster': {},
+            'secenekler': {}
+        }
+    
+    st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
+    
+    dogru_sayisi = 0
+    yanlis_sayisi = 0
+    toplam_soru = len(kelimeler)
+
+    for i, kelime in enumerate(kelimeler):
+        st.write(f"**{i+1}. {kelime['kelime']}**")
+        
+        secenekler_key = f"secenekler_{i}"
+        if secenekler_key not in st.session_state[f'test_durum_{bolum_index}']['secenekler']:
+            diger_kelimeler = [k for k in kelimeler if k != kelime]
+            yanlis_secenekler = random.sample(diger_kelimeler, min(2, len(diger_kelimeler)))
+            
+            secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
+            random.shuffle(secenekler)
+            st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key] = secenekler
+        else:
+            secenekler = st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key]
+        
+        secim_key = f"sec_{i}"
+        
+        if secim_key not in st.session_state[f'test_durum_{bolum_index}']['cevaplar']:
+            st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secenekler[0]
+        
+        secim = st.radio(
+            "Anlamı nedir?",
+            secenekler,
+            index=secenekler.index(st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key]),
+            key=f"radio_{bolum_index}_{i}"
+        )
+        
+        st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secim
+        
+        goster_key = f"goster_{i}"
+        if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
+            st.session_state[f'test_durum_{bolum_index}']['goster'][goster_key] = True
+        
+        if goster_key in st.session_state[f'test_durum_{bolum_index}']['goster']:
+            if secim == kelime['tr_anlam']:
+                st.success("✅ Doğru!")
+                dogru_sayisi += 1
+            else:
+                st.error(f"❌ Yanlış! Doğru cevap: **{kelime['tr_anlam']}**")
+                yanlis_sayisi += 1
+            
+            with st.expander("ℹ️ Kelime Detayı"):
+                st.write(f"**Tür:** {kelime.get('tur', '')}")
+                if kelime.get('es_anlamli'):
+                    st.write(f"**Eş Anlamlı:** {', '.join(kelime['es_anlamli'])}")
+                if kelime.get('ornek_cumle'):
+                    st.write(f"**Örnek:** {kelime['ornek_cumle']}")
+        
+        st.divider()
+    
+    if toplam_soru > 0:
+        st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
+        
+        if dogru_sayisi + yanlis_sayisi > 0:
+            test_tamamlandi_kaydet(
+                unite_adi="Kelime Testi", 
+                dogru_sayisi=dogru_sayisi,
+                yanlis_sayisi=yanlis_sayisi, 
+                toplam_soru=toplam_soru
+            )
+        
+        if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
+            st.session_state[f'test_durum_{bolum_index}'] = {'cevaplar': {}, 'goster': {}, 'secenekler': {}}
+            st.rerun()
+
+# ==================== BÖLÜM GÖSTERME FONKSİYONU ====================
 def bolum_goster(unite_data, bolum_index, ilerleme):
-    """Her bölümü gösterir"""
     bolum = unite_data["bolumler"][bolum_index]
     bolum_tipi = bolum["bolum_tipi"]
     
@@ -113,7 +241,6 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
                 st.write(f"**Örnek:** {kelime.get('ornek_cumle', '')}")
             st.divider()
 
-                # Kelime testi - Expander içinde
         with st.expander("🧪 Kelimeleri Test Et", expanded=False):
             kelime_testi_uygulamasi(kelimeler, bolum_index)
     
@@ -144,7 +271,7 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
             secim = st.radio("Seçenekler:", secenekler, key=f"soru_{soru.get('soru_no', '')}")
             
             if st.button("Cevapla", key=f"cevap_{soru.get('soru_no', '')}"):
-                secilen_cevap = secim[0]  # A, B, C
+                secilen_cevap = secim[0]
                 dogru_cevap = soru.get("cevap", "")
                 
                 if secilen_cevap == dogru_cevap:
@@ -156,7 +283,6 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
             
             st.divider()
     
-    # Bölüm tamamlama butonu
     bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
     
     if bolum_tamamlandi:
@@ -164,63 +290,19 @@ def bolum_goster(unite_data, bolum_index, ilerleme):
     else:
         if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
             if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
-                # İSTATİSTİK KAYDI EKLENDİ
-                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
+                kelime_sayisi = len(bolum.get("kelimeler", [])) if bolum_tipi == "kelime_tablosu" else 0
                 bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
                 st.success("🎉 Bölüm tamamlandı!")
                 st.rerun()
-# -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
-# -------------------- ÜNİTE FONKSİYONLARI BURADA BİTİYOR --------------------
-# -------------------- İSTATİSTİK VERİ TOPLAMA SİSTEMİ --------------------
-def istatistik_veri_kaydet(olay_tipi, **kwargs):
-    """İstatistik verilerini JSON'a kaydeder"""
-    try:
-        istatistik_dosyasi = "istatistik_verileri.json"
-        
-        # Mevcut verileri oku veya yeni oluştur
-        if os.path.exists(istatistik_dosyasi):
-            with open(istatistik_dosyasi, "r", encoding="utf-8") as f:
-                veriler = json.load(f)
-        else:
-            veriler = []
-        
-        # Yeni kayıt oluştur
-        yeni_kayit = {
-            "tarih": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "olay_tipi": olay_tipi,
-            **kwargs
-        }
-        
-        veriler.append(yeni_kayit)
-        
-        # Dosyaya kaydet
-        with open(istatistik_dosyasi, "w", encoding="utf-8") as f:
-            json.dump(veriler, f, ensure_ascii=False, indent=2)
-            
-        return True
-    except Exception as e:
-        print(f"İstatistik kayıt hatası: {e}")
-        return False
 
-def bolum_tamamlandi_kaydet(unite_adi, bolum_index, kelime_sayisi):
-    """Bölüm tamamlandığında istatistik kaydeder"""
-    return istatistik_veri_kaydet(
-        olay_tipi="bolum_tamamlandi",
-        unite_adi=unite_adi,
-        bolum_index=bolum_index,
-        kelime_sayisi=kelime_sayisi
-    )
-# -------------------- DEEPSEEK AI ENTEGRASYONU --------------------
+# ==================== DEEPSEEK AI ENTEGRASYONU ====================
 def deepseek_analiz_yap(istatistik_verileri):
-    """İstatistik verilerini DeepSeek AI ile analiz eder"""
     try:
-        # API key - şimdilik boş, sonra ekleyeceğiz
-        api_key = ""  # Buraya DeepSeek API key gelecek
+        api_key = st.session_state.get('deepseek_api_key', "")
         
         if not api_key:
             return "🔑 Lütfen DeepSeek API key'inizi '🔧 Ayarlar' sayfasına ekleyin."
         
-        # İstatistik verilerini hazırla
         basit_veriler = {
             "toplam_gun": len(set([v["tarih"][:10] for v in istatistik_verileri])),
             "tamamlanan_bolum": len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"]),
@@ -229,13 +311,9 @@ def deepseek_analiz_yap(istatistik_verileri):
             "son_7_gun_aktivite": []
         }
         
-        # Test başarı oranlarını ekle
         testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
         for test in testler:
             basit_veriler["test_basari"].append(test.get("basari_orani", 0))
-        
-        # Bu kısım şimdilik mock data döndürsün
-        # Gerçek API entegrasyonu için hazırlık
         
         mock_analiz = f"""
 🤖 **AI ANALİZ RAPORU**
@@ -260,122 +338,14 @@ Bu tempoyla 1 ay sonra 500+ kelime öğrenebilirsin!
     except Exception as e:
         return f"❌ AI analiz hatası: {str(e)}"
 
-def test_tamamlandi_kaydet(unite_adi, dogru_sayisi, yanlis_sayisi, toplam_soru):
-    """Test tamamlandığında istatistik kaydeder"""
-    return istatistik_veri_kaydet(
-        olay_tipi="test_tamamlandi",
-        unite_adi=unite_adi,
-        dogru_sayisi=dogru_sayisi,
-        yanlis_sayisi=yanlis_sayisi,
-        toplam_soru=toplam_soru,
-        basari_orani=dogru_sayisi/toplam_soru if toplam_soru > 0 else 0
-    )
-
-# -------------------- KELİME TESTİ FONKSİYONU --------------------
-def kelime_testi_uygulamasi(kelimeler, bolum_index):
-    """Basit kelime testi uygulaması"""
-    
-    if not kelimeler:
-        st.warning("⚠️ Bu bölümde test edilecek kelime bulunamadı.")
-        return
-    
-    # Test durumu için session state
-    if f'test_durum_{bolum_index}' not in st.session_state:
-        st.session_state[f'test_durum_{bolum_index}'] = {
-            'cevaplar': {},
-            'goster': {},
-            'secenekler': {}  # Yeni: Şıkları saklayacağız
-        }
-    
-    st.write("**İngilizce kelimenin Türkçe anlamını seçin:**")
-    
-    dogru_sayisi = 0
-    yanlis_sayisi = 0
-    toplam_soru = len(kelimeler)
-
-    for i, kelime in enumerate(kelimeler):
-        st.write(f"**{i+1}. {kelime['kelime']}**")
-        
-        # Şıkları hazırla - SADECE İLK SEFERDE shuffle yap
-        secenekler_key = f"secenekler_{i}"
-        if secenekler_key not in st.session_state[f'test_durum_{bolum_index}']['secenekler']:
-            import random
-            diger_kelimeler = [k for k in kelimeler if k != kelime]
-            yanlis_secenekler = random.sample(diger_kelimeler, min(2, len(diger_kelimeler)))
-            
-            secenekler = [kelime['tr_anlam']] + [k['tr_anlam'] for k in yanlis_secenekler]
-            random.shuffle(secenekler)
-            st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key] = secenekler
-        else:
-            secenekler = st.session_state[f'test_durum_{bolum_index}']['secenekler'][secenekler_key]
-        
-        # Seçim için unique key
-        secim_key = f"sec_{i}"
-        
-        # Seçim yapılmış mı kontrol et (ilk seferde ilk şıkkı seç)
-        if secim_key not in st.session_state[f'test_durum_{bolum_index}']['cevaplar']:
-            st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secenekler[0]
-        
-        # Radio butonu
-        secim = st.radio(
-            "Anlamı nedir?",
-            secenekler,
-            index=secenekler.index(st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key]),
-            key=f"radio_{bolum_index}_{i}"
-        )
-        
-        # Seçimi kaydet
-        st.session_state[f'test_durum_{bolum_index}']['cevaplar'][secim_key] = secim
-        
-        # Cevap göster butonu
-        goster_key = f"goster_{i}"
-        if st.button("Cevabı Kontrol Et", key=f"btn_{bolum_index}_{i}"):
-            st.session_state[f'test_durum_{bolum_index}']['goster'][goster_key] = True
-        
-        # Cevabı göster
-        if goster_key in st.session_state[f'test_durum_{bolum_index}']['goster']:
-            if secim == kelime['tr_anlam']:
-                st.success("✅ Doğru!")
-                dogru_sayisi += 1
-            else:
-                st.error(f"❌ Yanlış! Doğru cevap: **{kelime['tr_anlam']}**")
-            
-            # Mini bilgi
-            with st.expander("ℹ️ Kelime Detayı"):
-                st.write(f"**Tür:** {kelime.get('tur', '')}")
-                if kelime.get('es_anlamli'):
-                    st.write(f"**Eş Anlamlı:** {', '.join(kelime['es_anlamli'])}")
-                if kelime.get('ornek_cumle'):
-                    st.write(f"**Örnek:** {kelime['ornek_cumle']}")
-        
-        st.divider()
-    
-        # Sonuç
-    if toplam_soru > 0:
-        st.info(f"**Test Sonucu: {dogru_sayisi}/{toplam_soru} doğru**")
-        
-        # İSTATİSTİK KAYDI
-        if dogru_sayisi + yanlis_sayisi > 0:  # En az 1 soru cevaplanmışsa
-            test_tamamlandi_kaydet(
-                unite_adi="Kelime Testi", 
-                dogru_sayisi=dogru_sayisi,
-                yanlis_sayisi=yanlis_sayisi, 
-                toplam_soru=toplam_soru
-            )
-        
-        # Testi sıfırla
-        if st.button("🔄 Testi Sıfırla", key=f"reset_{bolum_index}"):
-            st.session_state[f'test_durum_{bolum_index}'] = {'cevaplar': {}, 'goster': {}, 'secenekler': {}}
-            st.rerun()
-
-# -------------------- ANA MENÜ --------------------
+# ==================== ANA MENÜ ====================
 menu = st.sidebar.selectbox(
     "📋 Menü",
     ["🏠 Ana Sayfa", "📚 PassageWork Çalışma", "📊 İstatistiklerim", "🎯 YDS Çalışma Soruları", "📝 Deneme Testleri", "🏆 Çıkmış Sorular", "➕ İçerik Ekle", "🔧 Ayarlar"],
     key="main_menu"
 )
 
-# -------------------- ANA SAYFA --------------------
+# ==================== ANA SAYFA ====================
 if menu == "🏠 Ana Sayfa":
     st.header("🏠 YDS Test Uygulamasına Hoş Geldin!")
     
@@ -407,11 +377,10 @@ if menu == "🏠 Ana Sayfa":
     
     st.success("🎯 **Başlamak için soldaki menüden bir bölüm seç!**")
 
-# -------------------- YENİ PASSAGEWORK SAYFASI (ÜNİTE SİSTEMİ) --------------------
+# ==================== PASSAGEWORK ÇALIŞMA ====================
 elif menu == "📚 PassageWork Çalışma":
     st.header("📚 PassageWork Çalışma - Ünite Sistemi")
     
-    # İçerikleri yükle
     try:
         with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
             tum_icerikler = json.load(f)
@@ -419,13 +388,11 @@ elif menu == "📚 PassageWork Çalışma":
         st.error(f"❌ Dosya okuma hatası: {e}")
         tum_icerikler = []
     
-    # Sadece ünite içeriklerini filtrele
     unite_icerikler = [icerik for icerik in tum_icerikler if icerik.get("icerik_tipi") == "unite"]
     
     if not unite_icerikler:
         st.info("📝 Henüz ünite eklenmemiş. Önce 'İçerik Ekle' sekmesinden ÜNİTE JSON'u ekle!")
         
-        # Örnek ünite formatı
         with st.expander("🎯 Örnek Ünite JSON Formatı"):
             st.code("""
 {
@@ -446,42 +413,14 @@ elif menu == "📚 PassageWork Çalışma":
           "ornek_cumle": "Organising your financial affairs is not easy."
         }
       ]
-    },
-    {
-      "bolum_tipi": "paragraf",
-      "baslik": "Okuma Parçası",
-      "ingilizce_paragraf": "Organising your financial affairs is not easy...",
-      "turkce_ceviri": "Finansal işlerinizi organize etmek kolay değildir...",
-      "onemli_kelimeler": ["financial", "grant", "organising"]
-    },
-    {
-      "bolum_tipi": "dilbilgisi_analizi", 
-      "baslik": "Dilbilgisi Notları",
-      "aciklama": "Bu paragraftaki önemli dilbilgisi yapıları",
-      "notlar": ["Present Simple tense", "Conditional sentences"]
-    },
-    {
-      "bolum_tipi": "test",
-      "baslik": "Ünite Testi", 
-      "sorular": [
-        {
-          "soru_no": 1,
-          "soru_metni": "'Financial' kelimesinin eş anlamlısı hangisidir?",
-          "siklar": ["A) monetary", "B) overseas", "C) grant"],
-          "cevap": "A",
-          "cozum": "'Financial' = finansal, 'monetary' = parasal"
-        }
-      ]
     }
   ]
 }
             """, language="json")
     
     else:
-        # Ünite seçimi
         st.success(f"✅ {len(unite_icerikler)} ünite bulundu!")
         
-        # Ünite listesi
         secilen_unite_index = st.selectbox(
             "📋 Çalışmak istediğin üniteyi seç:",
             range(len(unite_icerikler)),
@@ -492,10 +431,8 @@ elif menu == "📚 PassageWork Çalışma":
         unite_adi = secilen_unite.get("unite_adi", "İsimsiz Ünite")
         bolumler = secilen_unite.get("bolumler", [])
         
-        # İlerlemeyi getir
         ilerleme = unite_ilerleme_getir(unite_adi)
         
-        # İlerleme çubuğu
         tamamlanan_sayi = len(ilerleme["tamamlanan_bolumler"])
         toplam_bolum = len(bolumler)
         ilerleme_yuzdesi = (tamamlanan_sayi / toplam_bolum) * 100 if toplam_bolum > 0 else 0
@@ -504,10 +441,8 @@ elif menu == "📚 PassageWork Çalışma":
         st.progress(ilerleme_yuzdesi / 100)
         st.write(f"✅ {tamamlanan_sayi}/{toplam_bolum} bölüm tamamlandı")
         
-        # Bölüm seçimi
         bolum_isimleri = [f"{i+1}. {bolum['baslik']} ({bolum['bolum_tipi']})" for i, bolum in enumerate(bolumler)]
         
-        # Otomatik olarak son kaldığın bölümü seç
         son_bolum = ilerleme["son_bolum"]
         if son_bolum >= len(bolum_isimleri):
             son_bolum = 0
@@ -521,10 +456,8 @@ elif menu == "📚 PassageWork Çalışma":
         
         st.divider()
         
-        # Seçilen bölümü göster
         bolum_goster(secilen_unite, secilen_bolum_index, ilerleme)
         
-        # Navigasyon butonları
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col1:
@@ -541,34 +474,80 @@ elif menu == "📚 PassageWork Çalışma":
             elif tamamlanan_sayi == toplam_bolum:
                 st.success("🎉 TEBRİKLER! Bu üniteyi tamamladın!")
 
-    # Bölüm tamamlama butonu - EN SONA EKLENECEK
-    bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
+# ==================== İSTATİSTİKLERİM ====================
+elif menu == "📊 İstatistiklerim":
+    st.header("📊 İstatistiklerim")
     
-    if bolum_tamamlandi:
-        st.success("✅ Bu bölümü tamamladın!")
-    else:
-        if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
-            if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
-                # İSTATİSTİK KAYDI EKLENDİ
-                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
-                bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
-                st.success("🎉 Bölüm tamamlandı!")
-                st.rerun()
-    # -------------------- BÖLÜM TAMAMLAMA BUTONU --------------------
-    bolum_tamamlandi = bolum_index in ilerleme["tamamlanan_bolumler"]
+    try:
+        with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
+            istatistik_verileri = json.load(f)
+    except:
+        istatistik_verileri = []
     
-    if bolum_tamamlandi:
-        st.success("✅ Bu bölümü tamamladın!")
+    if not istatistik_verileri:
+        st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
     else:
-        if st.button("✅ Bölümü Tamamla", type="primary", key=f"tamamla_{bolum_index}"):
-            if unite_ilerleme_kaydet(unite_data["unite_adi"], bolum_index):
-                # İSTATİSTİK KAYDI EKLENDİ
-                kelime_sayisi = len(kelimeler) if bolum_tipi == "kelime_tablosu" else 0
-                bolum_tamamlandi_kaydet(unite_data["unite_adi"], bolum_index, kelime_sayisi)
-                st.success("🎉 Bölüm tamamlandı!")
-                st.rerun()
-# -------------------- YENİ PASSAGEWORK SAYFASI BURADA BİTİYOR --------------------
-# -------------------- İÇERİK EKLEME SİSTEMİ --------------------
+        st.subheader("🏆 Genel İlerleme")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            tarihler = set([veri["tarih"][:10] for veri in istatistik_verileri])
+            st.metric("📅 Çalışılan Gün", len(tarihler))
+        
+        with col2:
+            bolum_sayisi = len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"])
+            st.metric("✅ Tamamlanan Bölüm", bolum_sayisi)
+        
+        with col3:
+            toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri])
+            st.metric("📚 Toplam Kelime", toplam_kelime)
+        
+        with col4:
+            testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
+            if testler:
+                ortalama_basari = sum([v.get("basari_orani", 0) for v in testler]) / len(testler)
+                st.metric("📊 Başarı Oranı", f"%{ortalama_basari*100:.0f}")
+            else:
+                st.metric("📊 Başarı Oranı", "%-")
+        
+        st.subheader("📈 Günlük Aktivite")
+        
+        from datetime import timedelta
+        bugun = datetime.now().date()
+        son_7_gun = [(bugun - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
+        
+        gunluk_veriler = []
+        for gun in son_7_gun:
+            gun_verileri = [v for v in istatistik_verileri if v["tarih"][:10] == gun]
+            gunluk_veriler.append(len(gun_verileri))
+        
+        chart_data = {"Günler": son_7_gun, "Aktivite": gunluk_veriler}
+        st.line_chart(chart_data, x="Günler", y="Aktivite")
+        
+        st.subheader("📋 Detaylı Kayıtlar")
+        
+        for veri in reversed(istatistik_verileri[-10:]):
+            with st.expander(f"{veri['tarih']} - {veri['olay_tipi']}"):
+                if veri["olay_tipi"] == "bolum_tamamlandi":
+                    st.write(f"**Ünite:** {veri.get('unite_adi', '')}")
+                    st.write(f"**Bölüm:** {veri.get('bolum_index', '') + 1}")
+                    st.write(f"**Kelime Sayısı:** {veri.get('kelime_sayisi', 0)}")
+                elif veri["olay_tipi"] == "test_tamamlandi":
+                    st.write(f"**Doğru:** {veri.get('dogru_sayisi', 0)}")
+                    st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
+                    st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
+        
+        st.divider()
+        st.subheader("🤖 AI İle Detaylı Analiz")
+        
+        if st.button("🎯 AI Analiz Yap", type="primary"):
+            with st.spinner("AI verilerinizi analiz ediyor..."):
+                ai_rapor = deepseek_analiz_yap(istatistik_verileri)
+                st.success("AI analiz tamamlandı!")
+                st.markdown(ai_rapor)
+
+# ==================== İÇERİK EKLE ====================
 elif menu == "➕ İçerik Ekle":
     st.header("➕ İçerik Ekle")
     
@@ -583,18 +562,15 @@ elif menu == "➕ İçerik Ekle":
     if st.button("📤 İçeriği İşle ve Kaydet", type="primary"):
         if json_input.strip():
             try:
-                # JSON'u işle
                 success, mesaj = gemini_json_isleyici(json_input)
                 if success:
                     veri = json.loads(json_input)
                     
-                    # HEMEN KAYDET (butona gerek yok)
                     save_success, save_mesaj = icerik_dosyasina_kaydet(veri)
                     if save_success:
                         st.success("✅ İçerik başarıyla kaydedildi!")
                         st.balloons()
                         
-                        # Otomatik yenile
                         st.info("🔄 PassageWork sekmesine gidip içeriği görebilirsin")
                         
                         with st.expander("📋 Kaydedilen İçerik"):
@@ -607,12 +583,12 @@ elif menu == "➕ İçerik Ekle":
                 st.error(f"❌ Hata: {e}")
         else:
             st.warning("⚠️ Lütfen JSON yapıştırın")
-# -------------------- AYARLAR SAYFASI --------------------
+
+# ==================== AYARLAR ====================
 elif menu == "🔧 Ayarlar":
     st.header("🔧 Ayarlar")
     st.subheader("🤖 DeepSeek API Ayarları")
     
-    # API key için session state
     if 'deepseek_api_key' not in st.session_state:
         st.session_state.deepseek_api_key = ""
     
@@ -652,132 +628,19 @@ elif menu == "🔧 Ayarlar":
             
         except Exception as e:
             st.error(f"❌ Yedekleme hatası: {e}")
-# AYARLAR SEKMESİNE BUNU EKLE:
-elif menu == "🔧 Ayarlar":
-    st.header("🔧 Ayarlar")
-    st.subheader("🤖 DeepSeek API Ayarları")
     
-    # API key için session state
-    if 'deepseek_api_key' not in st.session_state:
-        st.session_state.deepseek_api_key = ""
+    st.divider()
     
-    api_key = st.text_input(
-        "DeepSeek API Key:", 
-        value=st.session_state.deepseek_api_key,
-        type="password",
-        placeholder="sk-... şeklinde API key'inizi girin"
-    )
-    
-    if api_key:
-        st.session_state.deepseek_api_key = api_key
-        st.success("✅ API key kaydedildi!")
-    
-    st.info("""
-    **DeepSeek API Key Nasıl Alınır?**
-    1. https://platform.deepseek.com/ adresine git
-    2. Üye ol/giriş yap
-    3. API Keys bölümünden yeni key oluştur
-    4. Buraya 'sk-...' şeklindeki key'i yapıştır
-    """)
-    
-    # DEBUG: Dosya içeriğini göster
     st.subheader("🐛 Debug - Dosya İçeriği")
     try:
         with open("gemini_icerikler.json", "r", encoding="utf-8") as f:
             icerikler = json.load(f)
         st.write(f"**Dosyadaki içerik sayısı:** {len(icerikler)}")
-        st.json(icerikler)  # Tüm içeriği göster
+        st.json(icerikler)
     except Exception as e:
         st.error(f"❌ Dosya okunamadı: {e}")
-# -------------------- İSTATİSTİKLERİM SAYFASI --------------------
-elif menu == "📊 İstatistiklerim":
-    st.header("📊 İstatistiklerim")
 
-# İstatistik verilerini yükle
-try:
-    with open("istatistik_verileri.json", "r", encoding="utf-8") as f:
-        istatistik_verileri = json.load(f)
-except:
-    istatistik_verileri = []
-    st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
-
-if not istatistik_verileri:
-    st.info("📝 Henüz istatistik verisi yok. Biraz çalışmaya başla!")
-else:
-    # TEMEL METRİKLER
-    st.subheader("🏆 Genel İlerleme")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        # Toplam çalışılan gün sayısı
-        tarihler = set([veri["tarih"][:10] for veri in istatistik_verileri])
-        st.metric("📅 Çalışılan Gün", len(tarihler))
-    
-    with col2:
-        # Toplam bölüm sayısı
-        bolum_sayisi = len([v for v in istatistik_verileri if v["olay_tipi"] == "bolum_tamamlandi"])
-        st.metric("✅ Tamamlanan Bölüm", bolum_sayisi)
-    
-    with col3:
-        # Toplam kelime sayısı
-        toplam_kelime = sum([v.get("kelime_sayisi", 0) for v in istatistik_verileri])
-        st.metric("📚 Toplam Kelime", toplam_kelime)
-    
-    with col4:
-        # Ortalama başarı oranı
-        testler = [v for v in istatistik_verileri if v["olay_tipi"] == "test_tamamlandi"]
-        if testler:
-            ortalama_basari = sum([v.get("basari_orani", 0) for v in testler]) / len(testler)
-            st.metric("📊 Başarı Oranı", f"%{ortalama_basari*100:.0f}")
-        else:
-            st.metric("📊 Başarı Oranı", "%-")
-    
-    # GÜNLÜK AKTİVİTE
-    st.subheader("📈 Günlük Aktivite")
-    
-    # Son 7 günlük veri
-    from datetime import datetime, timedelta
-    bugun = datetime.now().date()
-    son_7_gun = [(bugun - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(6, -1, -1)]
-    
-    gunluk_veriler = []
-    for gun in son_7_gun:
-        gun_verileri = [v for v in istatistik_verileri if v["tarih"][:10] == gun]
-        gunluk_veriler.append(len(gun_verileri))
-    
-    # Çizgi grafik
-    chart_data = {"Günler": son_7_gun, "Aktivite": gunluk_veriler}
-    st.line_chart(chart_data, x="Günler", y="Aktivite")
-    
-    # DETAYLI LİSTE
-    st.subheader("📋 Detaylı Kayıtlar")
-    
-    for veri in reversed(istatistik_verileri[-10:]):  # Son 10 kayıt
-        with st.expander(f"{veri['tarih']} - {veri['olay_tipi']}"):
-            if veri["olay_tipi"] == "bolum_tamamlandi":
-                st.write(f"**Ünite:** {veri.get('unite_adi', '')}")
-                st.write(f"**Bölüm:** {veri.get('bolum_index', '') + 1}")
-                st.write(f"**Kelime Sayısı:** {veri.get('kelime_sayisi', 0)}")
-            elif veri["olay_tipi"] == "test_tamamlandi":
-                st.write(f"**Doğru:** {veri.get('dogru_sayisi', 0)}")
-                st.write(f"**Yanlış:** {veri.get('yanlis_sayisi', 0)}")
-                st.write(f"**Başarı:** %{veri.get('basari_orani', 0)*100:.0f}")
-    
-    # AI ANALİZ BUTONU
-    st.divider()
-    st.subheader("🤖 AI İle Detaylı Analiz")
-    
-    if st.button("🎯 AI Analiz Yap", type="primary"):
-        with st.spinner("AI verilerinizi analiz ediyor..."):
-            ai_rapor = deepseek_analiz_yap(istatistik_verileri)
-            st.success("AI analiz tamamlandı!")
-            st.markdown(ai_rapor)
-    else:
-        st.info("👆 Yukarıdaki butona tıklayarak AI analiz yapabilirsiniz")
-
-# -------------------- İSTATİSTİK SAYFASI BİTTİ --------------------
-# -------------------- BOŞ SAYFALAR --------------------
+# ==================== BOŞ SAYFALAR ====================
 elif menu == "🎯 YDS Çalışma Soruları":
     st.header("🎯 YDS Çalışma Soruları")
     st.info("🚧 Bu bölüm yakında eklenecek...")
@@ -790,4 +653,4 @@ elif menu == "🏆 Çıkmış Sorular":
     st.header("🏆 Çıkmış Sorular")
     st.info("🚧 Bu bölüm yakında eklenecek...")
 
-# -------------------- UYGULAMA SONU --------------------
+# ==================== UYGULAMA SONU ====================
